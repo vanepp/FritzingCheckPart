@@ -1,0 +1,108 @@
+
+This is the coulddo file (the todo file's lazier brother). As such it indicates
+things that could be done to improve this script, but which either I don't 
+know how to do, are hard, or have more implications than just this scipt for
+the rest of Fritzing. As such I'm not at present working on them, but if 
+someone else wants to, I'll be happy to accept the changes.
+
+1) Documentation. Some of the code (especially the tag stack which is quite
+   odd) should be documented so other people can understand it and change the
+   code successfully but documentation is boring ...
+
+2) Refactor the code. Many of the routines have grown by modification and are 
+   way too large for easy understanding. This isn't so much hard as a lot of
+   boring work which needs good python skills (which I don't have). 
+
+3) A comprehensive test plan with regression tests to both completely test the
+   current code and to be able to test the effect of future changes. I started
+   looking at pytest as a platform but again a lot of work with expertise I 
+   don't currently have so testing is currently light and manual (both bad 
+   things). 
+
+4) A combintaion of 2 and 3: scrap the current version as a protype and start
+   from scratch. Implementing the entire thing properly with integrated unit
+   tests. This would be a lot of work but is probably the correct answer.
+
+5) Integrate this in to Fritzing (preferably as a hook that calls the external
+   python script so changes to the script can be made to track Inkscape changes
+   independent of Fritzing releases). This would need changes to the Fritzing 
+   source and I may eventually get there but it is likely to be a while. 
+
+6) Accept the fzpz file directly to the script, unzip it to get the fzp and 
+   svg files, process it and rezip the resulting files. Would need a temp 
+   directory to unpack the files in to and be able to deal with unzip errors
+   and figure out the python unzip library (I assume there is one) all of 
+   which are fairly complex. Probably the most useful of everything in here
+   though.  
+
+7) Find a way (perhaps compare file sizes) to see if the breadboard file 
+   matches the icon file and if not issue a warning message. Some of the 
+   parts in core have icon files that don't match (8pin dip for 14pin or larger
+   being a common one). It would be nice to prod the maker to fix this.
+
+8) Rearrange the order of connectors in the fpz file so they are in numerical 
+   sequence (without renumbering them so far, as renumbering has wider 
+   implications, see item 6). At present some parts have odd pin sequences 
+   which make the fzp hard to read. To do this you would need to rearrange 
+   the node tree in lxml and I don't know how to do that at present (I expect 
+   I could learn, but I'm not at present motivated).
+
+9) As an extension of the last one, renumber the connectors in sequence 
+   starting at connector0. This needs to be done in both the fzp and the 
+   associated svg files and is thus more complex to do in the script. The 
+   big issue however is that this renumbering will break existing parts, as 
+   with the pin numbers changed previous sketches will break. Something needs 
+   to be worked out to make that possible (possibly obsolete the current 
+   parts and/or change the part names for use in new sketches only). Needs 
+   discussion in the forums and consensus from the community I expect. 
+
+10) Use this script to be able to diff the changes in an svg file. Currently
+   this is hard to do because the order of attributes are uninportant to xml
+   but very important to a diff program. To xml 
+
+   style="font-size:3.49962187;font-family:DroidSans;fill:#8c8c8c"
+
+   and 
+
+   style="font-family:DroidSans;font-size:3.49962187;fill:#8c8c8c"
+
+   are identical (and indeed Inkscape will change the order of the xml from
+   invocation to invocation). To a diff program this is a difference (although
+   from the xml standpoint it is not). If was suggested in an article I read
+   that the solution to this problem is to parse the xml and compare the trees
+   as a way to find and display the real changes in two xml files. I think even
+   that will be reasonably hard, but it would be worthwhile doing if possible
+   so you can see what real changes have happened (if any) between two svg
+   files. Just not by me at least right now. 
+
+11) Pretty print the 
+  
+   style="font-family:DroidSans;font-size:3.49962187;fill:#8c8c8c"
+
+   (which can get overly long and complex) to 
+
+   style="
+     font-family:DroidSans;
+     font-size:3.49962187;
+     fill:#8c8c8c"
+
+  which I think (note the weasel word) should be equivelent xml but more 
+  readable. This is also more useful to general purpose pretty printing than 
+  Fritzing as Fritzing doesn't fully support CSS and the above gets inlined 
+  by the script. Not that hard but I'm too lazy to try it at the moment
+  and don't have a need for general purpose pretty printing.
+
+12) Check the leg portion of a bendable lead is outside the view box. This 
+    should be simple, just compare to the view box limits. Transform is what
+    breaks that. The transfrom changes the leg coords (unless removed which
+    I don't know how to do except by ungrouping in Inkscape) so that in the 
+    xml they appear to be inside the view box (when they are in fact not). Yet
+    another reason why transform is evil and should be stamped out ...
+    This could be done by detecting transforms in the path (not that easy) 
+    and tossing an error until the user removes them. Without transforms it
+    is easy to compare the leg ends to the view box coords to make sure the 
+    leg is outside the viewbox. The associated path is harder and I haven't
+    currently done any of this. 
+
+
+
