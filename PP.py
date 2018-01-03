@@ -16,6 +16,8 @@
 # Set Debug to 3 for very verbose debug messages. 
 
 Debug = 0
+
+Version = '0.0.2'  # Version number of this file.
 	
 # Import os and sys to get file rename and the argv stuff, re for regex and 
 # logging to get logging support and the various svg routines from LxmlTools.
@@ -72,7 +74,7 @@ if len(InFile) > 0:
             # nothing (Fritzing processing needs the path when using these 
             # routines).
 
-            FileType = 'svg'
+            FileType = 'SVG'
 
             Path = ''
 

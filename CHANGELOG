@@ -1,0 +1,65 @@
+All notable changes to this project will be documented in this file.
+
+0.0.2 - 2017-12-31
+
+	- Fixed the logic of detecting not a file or not an svg and not an fzp
+	  in argument parsing and corrected the if to be more readable
+
+	- removed the numbers from all the Usage: statements in argument 
+	  parsing. Moved out of Errors section in to a Usage section as well. 
+
+	- Added FileType back in to multiple function calls as it is in fact
+	  needed where it was (and broke svg processing when removed). 
+
+	- Changed names of README.md CHANGELOG.md COULDDO.md to README
+	  CHANGELOG and COULDDO as they are plain text files and don't display
+	  correctly in the repo as .md files.
+
+	- Moved tests for connectors being present from ProcessTree in to 
+	  ProcessSvgsFromFzp which is more efficient and more likely to 
+	  work (connectors were not being checked entirely before)
+	
+	- Added IssueDescriptionDupWarning (default value y) to be able to  
+	  supress warnings about duplicate names in the description field
+	  (because they are both common and harmless). Documented in README.
+
+	- Added a regex to remove leading blanks from the attributes in 
+	  SVGInlineStyle because they cause a value exception in lxml. This 
+	  should mostly eliminate Warning 23 messages (and allow the one non 
+	  core file I have found that this breaks to be processed correctly).
+	  Still occurs on Inkscape messages like this:
+	  
+	  -inkscape-font-specification
+
+	  I think because of the '-' in the data although I'm not sure why but 
+	  Fritzing ignores this field anyway so it doesn't hurt anything to 
+	  delete it.
+
+	- add the version number to all the .py files. 
+	  FritzingCheckPart.py  FritzingTools.py  PP.py  PPTools.py
+
+	- Added a file copy of the input icon svg to the output svg as the 
+	  icon file isn't processed but needs to be in the output. Don't
+	  do the copy if Debug is non zero as the file names will be the same
+	  and cause an exception (and the output is going the console anyway).
+
+	- Added the name of the svg file to the Error 18 message as it is 
+	  remarkably content free and useless without it. 
+
+	- Moved the "processed this svg" check after the test if this is icon
+	  view to avoid outputting an error message for icon view (which we
+	  end up not processing anyway). 
+
+0.0.1 - 2017-12-14
+
+Added for intitial release
+
+	CHANGELOG.md
+	COULDDO.md
+	FritzingCheckPart.py
+	FritzingTools.py
+	LICENCE
+	PP.py
+	PPTools.py
+	README.md
+	

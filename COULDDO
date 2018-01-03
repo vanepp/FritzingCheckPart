@@ -104,5 +104,16 @@ someone else wants to, I'll be happy to accept the changes.
     leg is outside the viewbox. The associated path is harder and I haven't
     currently done any of this. 
 
+13) Remove the levels and levels of empty groups that the Fritzing part
+    exporter likes to insert in svg files. They serve no purpose and waste 
+    both disk space and processing time (probably not much though) dealing 
+    with them when rendered. Would need to rearrange nodes in lxml which is 
+    why I haven't done it. 
 
+14) Check the viewbox scaling (assuming the height/width are in inches) is 
+    1000/1 making internal size numbers in thousands of an inch. Given that, 
+    we could check for .1 inch pin spacing in breadboard and schematic and
+    complain about things that aren't. I'm tempted to add this as part of a 
+    current bug fix release, but will be good and put it here instead, 
+    because it will be a bit of work and bugs first ...
 

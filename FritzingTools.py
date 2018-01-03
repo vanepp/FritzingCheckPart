@@ -11,7 +11,19 @@
 
 ModifyTerminal = 'n'
 
-# Import os and sys to get file rename and the argv stuff, re for regex, 
+# Set to 'n' (or anything not 'y') to supress Warning 28: (dup id in 
+# description field) which is all of common, annoying and harmless.
+# However by default the warning is issued ...
+
+IssueNameDupWarning = 'n'
+
+Version = '0.0.2'  # Version number of this file. 
+
+# Import copyfile
+
+from shutil import copyfile
+
+# Import os and sys to get file rename and the argv stuff, re for regex,
 # logging to get logging support and PPTools for the parse routine
 
 import os, sys, re, logging, PPTools as PP
@@ -98,6 +110,8 @@ def ProcessArgs(Argv, Errors):
 
     FileType = None
 
+    DirProcessing = 'N'
+
     PrefixDir = ""
 
     Path = ""
@@ -114,17 +128,30 @@ def ProcessArgs(Argv, Errors):
         # the first directory in to the empty second directory, creating 
         # subdirectories as needed (but no backup files!) 
 
-        FileType, PrefixDir, Path, File, SrcDir, DstDir = ProcessDirArgs(Argv, Errors)
+        DirProcessing, PrefixDir, Path, File, SrcDir, DstDir = ProcessDirArgs(Argv, Errors)
 
-        return FileType, PrefixDir, Path, File, SrcDir, DstDir
+        if DirProcessing == 'Y':
+
+            # Success, so set FileType to 'dir' from None to indicate no
+            # error is present and to continue processing. 
+    
+            FileType = 'dir'
+
+        # End of if (DirProcessing == 'Y':
+
+        logging.info (' Exiting ProcessArgs\n')
+
+        return FileType, DirProcessing, PrefixDir, Path, File, SrcDir, DstDir
 
     elif len(sys.argv) != 2:
 
         # No input file or too many arguments so print a usage message and exit.
 
-        Errors.append('Usage 9: {0:s} filename.fzp or filename.svg or srcdir dstdir\n'.format(str(sys.argv[0])))
+        Errors.append('Usage: {0:s} filename.fzp or filename.svg or srcdir dstdir\n'.format(str(sys.argv[0])))
 
-        return FileType, PrefixDir, Path, File, SrcDir, DstDir
+        logging.info (' Exiting ProcessArgs\n')
+
+        return FileType, DirProcessing, PrefixDir, Path, File, SrcDir, DstDir
 
     else:
 
@@ -134,13 +161,23 @@ def ProcessArgs(Argv, Errors):
 
         logging.debug (' ProcessArgs: input filename %s\n', InFile)
 
-        if not os.path.isfile(InFile) and not SvgExtRegex.search(InFile) and not FzpExtRegex.search(InFile):
+        logging.debug (' ProcessArgs: isfile %s\n', os.path.isfile(InFile))
+
+        logging.debug (' ProcessArgs: svg %s\n', SvgExtRegex.search(InFile))
+
+        logging.debug (' ProcessArgs: fzp %s\n', FzpExtRegex.search(InFile))
+
+        if (not os.path.isfile(InFile) or 
+                (SvgExtRegex.search(InFile) == None and
+                FzpExtRegex.search(InFile) == None)):
 
             # Input file isn't valid, return a usage message.
 
-            Errors.append('Usage 9: {0:s} filename.fzp or filename.svg or srcdir dstdir\n\n{1:s} either isn\'t a file or doesn\'t end in .fzp or .svg\n'.format(str(sys.argv[0]),  str(InFile)))
+            Errors.append('Usage: {0:s} filename.fzp or filename.svg or srcdir dstdir\n\n\'{1:s}\'\n\neither isn\'t a file or doesn\'t end in .fzp or .svg\n'.format(str(sys.argv[0]),  str(InFile)))
 
-            return FileType, PrefixDir, Path, File, SrcDir, DstDir
+            logging.info (' Exiting ProcessArgs\n')
+
+            return FileType, DirProcessing, PrefixDir, Path, File, SrcDir, DstDir
 
         # End of if not os.path.isfile(InFile) and not SvgExtRegex.search(InFile) and not FzpExtRegex.search(InFile):
 
@@ -166,7 +203,7 @@ def ProcessArgs(Argv, Errors):
 
             # process a single svg file.
 
-            FileType = 'svg'
+            FileType = 'SVG'
 
             logging.debug (' ProcessArgs: Found svg input file %s set FileType %s\n', InFile, FileType)
 
@@ -185,9 +222,9 @@ def ProcessArgs(Argv, Errors):
                 # directory named svg.image_type.filename so set FileType 
                 # to fzpPart to indicate that.
     
-                FileType = 'fzpPart'
+                FileType = 'FZPPART'
 
-                logging.debug (' ProcessArgs: Set filetype fzpPart\n')
+                logging.debug (' ProcessArgs: Set filetype FZPPART\n')
     
             else:
     
@@ -211,7 +248,7 @@ def ProcessArgs(Argv, Errors):
     
                     logging.info (' Exiting ProcessArgs no prefix dir error\n')
     
-                    return FileType, PrefixDir, Path, File, SrcDir, DstDir
+                    return FileType, DirProcessing, PrefixDir, Path, File, SrcDir, DstDir
     
                 # End of if SplitDir[1] == '' or SplitDir[1] == '.' or SplitDir[1] == '..':
         
@@ -230,12 +267,10 @@ def ProcessArgs(Argv, Errors):
         
                 # then so set FileType to fzpFritz to indicate that. 
     
-                FileType = 'fzpFritz'
+                FileType = 'FZPFRITZ'
     
                 logging.debug (' Found Fritzing type input file %s path %s\n', InFile, Path)
 
-                return FileType, PrefixDir, Path, File, SrcDir, DstDir
-    
             # End of if PartRegex.search(File):
     
         # End of if SvgExtRegex.search(File):
@@ -244,7 +279,9 @@ def ProcessArgs(Argv, Errors):
 
     logging.debug (' ProcessArgs: End of ProcessArgs return FileType %s PrefixDir %s Path %s File %s\n', FileType, PrefixDir, Path, File)
 
-    return FileType, PrefixDir, Path, File, SrcDir, DstDir
+    logging.info (' Exiting ProcessArgs\n')
+
+    return FileType, DirProcessing, PrefixDir, Path, File, SrcDir, DstDir
 
 # End of def ProcessArgs(Argv, Errors):
 
@@ -254,7 +291,7 @@ def ProcessDirArgs(argv, Errors):
 
     # Clear the return variables in case of error. 
 
-    FileType = None
+    DirProcessing = 'N'
 
     PrefixDir = ""
 
@@ -272,11 +309,11 @@ def ProcessDirArgs(argv, Errors):
 
     if not os.path.isdir(SrcDir):
 
-        Errors.append('Usage 11: {0:s} src_dir dst_dir\n\nsrc_dir {1:s} isn\'t a directory\n'.format(sys.argv[0], SrcDir))
+        Errors.append('Usage: {0:s} src_dir dst_dir\n\nsrc_dir {1:s} isn\'t a directory\n'.format(sys.argv[0], SrcDir))
 
         logging.info (' Exiting ProcessDirArgs src dir error\n')
 
-        return FileType, PrefixDir, Path, File, SrcDir, DstDir
+        return DirProcessing, PrefixDir, Path, File, SrcDir, DstDir
 
     # End of if not os.path.isdir(SrcDir):
 
@@ -284,11 +321,11 @@ def ProcessDirArgs(argv, Errors):
 
     if not os.path.isdir(DstDir):
 
-        Errors.append('Usage 12: {0:s} src_dir dst_dir\n\ndst_dir {1:s} Isn\'t a directory\n'.format(sys.argv[0], DstDir))
+        Errors.append('Usage: {0:s} src_dir dst_dir\n\ndst_dir {1:s} Isn\'t a directory\n'.format(sys.argv[0], DstDir))
 
         logging.info (' Exiting ProcessDirArgs dst dir error\n')
 
-        return FileType, PrefixDir, Path, File, SrcDir, DstDir
+        return DirProcessing, PrefixDir, Path, File, SrcDir, DstDir
 
     # End of if not os.path.isdir(DstDir):
 
@@ -300,7 +337,7 @@ def ProcessDirArgs(argv, Errors):
 
         logging.info (' Exiting ProcessDirArgs dst dir not empty error\n')
 
-        return FileType, PrefixDir, Path, File, SrcDir, DstDir
+        return DirProcessing, PrefixDir, Path, File, SrcDir, DstDir
 
     # End of if os.listdir(DstDir) != []:
 
@@ -317,7 +354,7 @@ def ProcessDirArgs(argv, Errors):
 
         logging.info (' Exiting ProcessDirArgs no prefix dir error\n')
 
-        return FileType, PrefixDir, Path, File, SrcDir, DstDir
+        return DirProcessing, PrefixDir, Path, File, SrcDir, DstDir
 
     else:
     
@@ -345,7 +382,7 @@ def ProcessDirArgs(argv, Errors):
 
             logging.info (' Exiting ProcessDirArgs dir on error %s\n',e.strerror)
 
-            return FileType, PrefixDir, Path, File, SrcDir, DstDir
+            return DirProcessing, PrefixDir, Path, File, SrcDir, DstDir
 
         # End of try:
     
@@ -365,7 +402,7 @@ def ProcessDirArgs(argv, Errors):
 
             logging.info (' Exiting ProcessDirArgs dir on error %s\n',e.strerror)
 
-            return FileType, PrefixDir, Path, File, SrcDir, DstDir
+            return DirProcessing, PrefixDir, Path, File, SrcDir, DstDir
 
         # End of try:
     
@@ -383,7 +420,7 @@ def ProcessDirArgs(argv, Errors):
 
             logging.info (' Exiting ProcessDirArgs dir on error %s\n',e.strerror)
 
-            return FileType, PrefixDir, Path, File, SrcDir, DstDir
+            return DirProcessing, PrefixDir, Path, File, SrcDir, DstDir
 
         # End of try:
     
@@ -403,7 +440,7 @@ def ProcessDirArgs(argv, Errors):
 
             logging.info (' Exiting ProcessDirArgs dir on error %s\n',e.strerror)
 
-            return FileType, PrefixDir, Path, File, SrcDir, DstDir
+            return DirProcessing, PrefixDir, Path, File, SrcDir, DstDir
 
         # End of try:
     
@@ -421,7 +458,7 @@ def ProcessDirArgs(argv, Errors):
 
             logging.info (' Exiting ProcessDirArgs dir on error %s\n',e.strerror)
 
-            return FileType, PrefixDir, Path, File, SrcDir, DstDir
+            return DirProcessing, PrefixDir, Path, File, SrcDir, DstDir
 
         # End of try:
     
@@ -439,7 +476,7 @@ def ProcessDirArgs(argv, Errors):
 
             logging.info (' Exiting ProcessDirArgs dir on error %s\n',e.strerror)
 
-            return FileType, PrefixDir, Path, File, SrcDir, DstDir
+            return DirProcessing, PrefixDir, Path, File, SrcDir, DstDir
 
         # End of try:
     
@@ -457,7 +494,7 @@ def ProcessDirArgs(argv, Errors):
 
             logging.info (' Exiting ProcessDirArgs dir on error %s\n',e.strerror)
 
-            return FileType, PrefixDir, Path, File, SrcDir, DstDir
+            return DirProcessing, PrefixDir, Path, File, SrcDir, DstDir
 
         # End of try:
     
@@ -466,16 +503,21 @@ def ProcessDirArgs(argv, Errors):
     # End of if SplitDir[1] == '' or SplitDir[1] == '.' or SplitDir[1] == '..':
         
     # If we get here we have a src and dst directory plus all the required new
-    # dst directories so return all that to the calling routine. Set the
-    # FileType to 'dir' to indicate success.
+    # dst directories so return all that to the calling routine. Set
+    # DirProcessing  to 'Y' to indicate success.
+
+    DirProcessing,  = 'Y'
+
+    # Then set FileType to 'dir' from None to not cause a silent error exit
+    # on return. 
 
     FileType = 'dir'
 
-    logging.debug (' ProcessDirArgs returning FileType %s PrefixDir %s Path %s File %s SrcDir %s DstDir %s\n',FileType, PrefixDir, Path, File, SrcDir, DstDir)
+    logging.debug (' ProcessDirArgs returning DirProcessing %s PrefixDir %s Path %s File %s SrcDir %s DstDir %s\n', DirProcessing, PrefixDir, Path, File, SrcDir, DstDir)
 
     logging.info (' Exiting ProcessDirArgs\n')
 
-    return FileType, PrefixDir, Path, File, SrcDir, DstDir
+    return DirProcessing, PrefixDir, Path, File, SrcDir, DstDir
 
 # End of def ProcessDirArgs(Argv, Errors):
 
@@ -574,16 +616,16 @@ def DupNameWarning(InFile, Id, Elem, Warnings):
 
 #End of def DupNameWarning(InFile, Id, Elem, Warnings):
 
-def ProcessTree(FzpType, InFile, OutFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug, Level=0):
+def ProcessTree(FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug, Level=0):
 
     # Potentially recursively process the element nodes of an lxml tree to 
     # aquire the information we need to check file integrity. This routine gets
     # called recursively to process child nodes (other routines get called for
     # leaf node processing). 
 
-    logging.info (' Entering ProcessTree FzpType %s InFile %s Level %s\n', FzpType, InFile, Level)
+    logging.info (' Entering ProcessTree FileType %s InFile %s Level %s\n', FileType, InFile, Level)
 
-    logging.debug (' ProcessTree: Source line %s Elem len %s Level %s Elem attributes %s text %s FzpType %s InFile %s OutFile %s CurView %s PrefixDir %s Errors %s Warnings %s Info %s TagStack %s State %s InheritedAttributes %s\n', Elem.sourceline, len(Elem), Level, Elem.attrib, Elem.text, FzpType, InFile, OutFile, CurView, PrefixDir, Errors, Warnings, Info, TagStack, State, InheritedAttributes)
+    logging.debug (' **** ProcessTree: Source line %s Elem len %s Level %s\nTag %s\nattributes\n%s\ntext %s\nFzpType %s FileType %s InFile %s OutFile %s CurView %s PrefixDir %s Errors %s Warnings %s Info %s TagStack %s State %s InheritedAttributes %s\n', Elem.sourceline, len(Elem), Level, Elem.tag, Elem.attrib, Elem.text, FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Errors, Warnings, Info, TagStack, State, InheritedAttributes)
 
 
     # Start by checking for non whitespace charactes in tail (which is likely
@@ -603,7 +645,7 @@ def ProcessTree(FzpType, InFile, OutFile, CurView, PrefixDir, Elem, Errors, Warn
 
         logging.debug (' ProcessTree: Procees parent node attributes Source line %s len %s Level %s tag %s\n', Elem.sourceline, len(Elem), Level, Elem.tag)
 
-        ProcessLeafNode(FzpType, InFile, OutFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug, Level)
+        ProcessLeafNode(FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug, Level)
 
         logging.debug (' ProcessTree: Child nodes Source line %s len %s Level %s tag %s\n', Elem.sourceline, len(Elem), Level, Elem.tag)
 
@@ -617,14 +659,14 @@ def ProcessTree(FzpType, InFile, OutFile, CurView, PrefixDir, Elem, Errors, Warn
                 # this node will be processed by the recursion call and the 
                 # level will be increased by one.) 
 
-                ProcessTree(FzpType, InFile, OutFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug, Level+1)
+                ProcessTree(FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug, Level+1)
 
             else: # This particular element in the for loop is a leaf node.
 
                 # As this is a leaf node proecess it again increasing the 
                 # level by 1 before doing the call. 
 
-                ProcessLeafNode(FzpType, InFile, OutFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug, Level+1)
+                ProcessLeafNode(FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug, Level+1)
 
             # End of if len(Elem):
 
@@ -635,60 +677,19 @@ def ProcessTree(FzpType, InFile, OutFile, CurView, PrefixDir, Elem, Errors, Warn
         # This is a leaf node and thus the level needs to be increased by 1
         # before we process it.  
 
-        ProcessLeafNode(FzpType, InFile, OutFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug, Level+1)
+        ProcessLeafNode(FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug, Level+1)
 
     # end of if len(Elem):
 
-    if Level == 0 and 'fzp' in FzpDict and CurView == None:
-
-        # We are at the end of processing the fzp file so check that the 
-        # connector numbers are contiguous. 
-
-        FzpCheckConnectors(InFile, Elem, FzpDict, Errors, Warnings, Info, State, Level)    
-
-    # End of if Level == 0 and 'fzp' in FzpDict and CurView == None:
-
-    if Level == 0 and 'fzp' in FzpDict and CurView != None and CurView != 'iconView':
-
-        # If we are finished processing this file, we have an fzp file (because
-        # fzp is set)  and it isn't the fzp file (because CurView isn't None), 
-        # and isn't the icon svg (which doesn't care about connectors),
-        # then check the connectors on this svg file to make sure they are 
-        # all present. 
-
-        logging.debug  (' ProcessTree: Checking connectors for %s\n', InFile)
-
-        for Connector in FzpDict['connectors.fzp.' + CurView]:
-
-            # Check that the connector is in the svg and error if not. 
-
-            logging.debug  (' ProcessTree: Checking connector %s\n', Connector)
-
-            if not 'connectors.svg.' + CurView in FzpDict:
-
-                Errors.append('Error 17: File\n\'{0:s}\'\n\nNo connectors found for view {1:s}.\n'.format(str(InFile), str(CurView)))
-
-            elif not Connector in FzpDict['connectors.svg.' + CurView]:
-
-                logging.debug  ('ProcessTree: Connector %s missing\n', Connector)
-
-                Errors.append('Error 18: File\n\'{0:s}\'\n\nConnector {1:s} is in the fzp file but not the svg file. (typo?)\n'.format(str(InFile), str(Connector)))
-
-            # End of if not 'connectors.svg.' + CurView in FzpDict:
-                
-        # End of `for Connector in FzpDict['connectors.fzp.' + CurView]:
-
-    # End of if Level == 0 and 'fzp' in FzpDict and CurView != None and CurView != 'IconView':
-
     logging.info (' Exiting ProcessTree Level %s\n', Level)
 
-# End of def ProcessTree(FzpType, InFile, OutFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug, Level=0):
+# End of def ProcessTree(FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug, Level=0):
 
-def ProcessLeafNode(FzpType, InFile, OutFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug, Level):
+def ProcessLeafNode(FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug, Level):
 
-    logging.info (' Entering ProcessLeafNode FzpType %s Level %s\n', FzpType, Level)
+    logging.info (' Entering ProcessLeafNode FileType %s Level %s\n', FileType, Level)
 
-    logging.debug (' ProcessLeafNode: InFile %s CurView %s Errors %s\n', InFile,CurView, Errors)
+    logging.debug (' ProcessLeafNode: FzpType %s FileType %s InFile %s CurView %s Errors %s\n', FzpType, FileType, InFile,CurView, Errors)
 
     # Start by checking for non whitespace charactes in tail (which is likely
     # an error) and flag the line if present. 
@@ -703,18 +704,18 @@ def ProcessLeafNode(FzpType, InFile, OutFile, CurView, PrefixDir, Elem, Errors, 
         
     # End of if not Elem.tail.isspace(): 
 
-    # Select the appropriate leaf node processing routing based on the FzpType
+    # Select the appropriate leaf node processing routing based on the FileType
     # variable. 
 
-    if FzpType == 'fzpFritz' or  FzpType == 'fzpPart':
+    if FileType == 'FZPFRITZ' or  FileType == 'FZPPART':
 
         # If this is a fzp file do the leaf node processing for that. 
 
-        ProcessFzpLeafNode(FzpType, InFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level)
+        ProcessFzpLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level)
         
-    elif FzpType == 'svg':
+    elif FileType == 'SVG':
 
-        ProcessSvgLeafNode(FzpType, InFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Level)
+        ProcessSvgLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Level)
 
     else:
 
@@ -724,19 +725,19 @@ def ProcessLeafNode(FzpType, InFile, OutFile, CurView, PrefixDir, Elem, Errors, 
             # to supress more messages and just return. It won't work right 
             # but the problem will at least be reported. 
 
-            Errors.append('Error 19: File\n\'{0:s}\'\n\nFile type {1:s} is an unknown format (software error)\n'.format(str(InFile), str(FzpType)))
+            Errors.append('Error 19: File\n\'{0:s}\'\n\nFile type {1:s} is an unknown format (software error)\n'.format(str(InFile), str(FileType)))
 
             State['SoftwareError'] = 'y'
 
         # End of if not 'SoftwareError' in State:
 
-    # End of if if FzpType == 'fzpFritz' or  FzpType == 'fzpPart':
+    # End of if FileType == 'FZPFRITZ' or  FileType == 'FZPPART':
 
     logging.info (' Exiting ProcessLeafNode Level %s\n', Level)
 
 # End of def ProcessLeafNode(FzpType, InFile, OutFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug, Level):
 
-def ProcessFzp(FileType, FzpType, InFile, OutFile, CurView, PrefixDir, Errors, Warnings, Info, FzpDict, FilesProcessed, TagStack, State, InheritedAttributes, Debug):
+def ProcessFzp(DirProcessing, FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Errors, Warnings, Info, FzpDict, FilesProcessed, TagStack, State, InheritedAttributes, Debug):
 
     logging.info (' Entering ProcessFzp FzpType %s FileType %s InFile %s\n', FzpType, FileType, InFile)
 
@@ -798,40 +799,44 @@ def ProcessFzp(FileType, FzpType, InFile, OutFile, CurView, PrefixDir, Errors, W
         # Now that we have an appropriate input file name, process the tree.
         # (we won't get here if there is a file rename error above!)
 
-        logging.debug (' ProcessFzp: before ProcessTree FzpType %s FQOutFile %s\n', FzpType, FQOutFile)
+        logging.debug (' ProcessFzp: before ProcessTree FileType %s FQOutFile %s\n', FileType, FQOutFile)
 
-        ProcessTree(FzpType, InFile, FQOutFile, None, PrefixDir, Root, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug)
+        ProcessTree(FzpType, FileType, InFile, FQOutFile, None, PrefixDir, Root, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug)
 
-        logging.debug (' ProcessFzp: After ProcessTree FzpType %s FQOutFile %s\n', FzpType, FQOutFile)
+        logging.debug (' ProcessFzp: After ProcessTree FileType %s FQOutFile %s\n', FileType, FQOutFile)
 
+        # We are at the end of processing the fzp file so check that the
+        # connector numbers are contiguous.
+
+        FzpCheckConnectors(InFile, Root, FzpDict, Errors, Warnings, Info, State)        
         # We have an output file name so write the fzp file to it (or the 
         # console if Debug is > 0.)
 
-        logging.debug (' ProcessFzp: Prettyprint FQOutFile %s FzpType %s\n', FQOutFile, FzpType)
+        logging.debug (' ProcessFzp: Prettyprint FQOutFile %s FileType %s\n', FQOutFile, FileType)
 
-        PP.OutputTree(Doc, Root, FzpType, InFile, FQOutFile, Errors, Warnings, Info, Debug)
+        PP.OutputTree(Doc, Root, FileType, InFile, FQOutFile, Errors, Warnings, Info, Debug)
 
         # Then process the associatted svg files from the fzp.
 
-        logging.debug (' ProcessFzp: Calling ProcessSvgsFromFzp FileType %s FzpType %s InFile %s OutFile %s PrefixDir %s Errors %s Warnings %s Info %s FzpDict %s Debug %s\n', FileType, FzpType, InFile, OutFile, PrefixDir, Errors, Warnings, Info, FzpDict, Debug)
+        logging.debug (' ProcessFzp: Calling ProcessSvgsFromFzp DirProcessing %s FzpType %s FileType %s InFile %s OutFile %s PrefixDir %s Errors %s Warnings %s Info %s FzpDict %s Debug %s\n', DirProcessing, FzpType, FileType, InFile, OutFile, PrefixDir, Errors, Warnings, Info, FzpDict, Debug)
 
 
         # Use the original value of OutFile to process the svgs. 
 
-        ProcessSvgsFromFzp(FileType, FzpType, InFile, OutFile, PrefixDir, Errors, Warnings, Info, FzpDict, FilesProcessed, Debug)
+        ProcessSvgsFromFzp(DirProcessing, FzpType, FileType, InFile, OutFile, PrefixDir, Errors, Warnings, Info, FzpDict, FilesProcessed, Debug)
 
     # End of if Doc != None:
     
     logging.info (' Exiting ProcessFzp\n')
 
-# End of  ProcessFzp(FileType, FzpType, InFile, OutFile, CurView, PrefixDir, Errors, Warnings, Info, FzpDict, FilesProcessed, TagStack, State, InheritedAttributes, Debug):
+# End of def ProcessFzp(DirProcessing, FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Errors, Warnings, Info, FzpDict, FilesProcessed, TagStack, State, InheritedAttributes, Debug):
 
-def ProcessSvgsFromFzp(FileType, FzpType, InFile, OutFile, PrefixDir, Errors, Warnings, Info, FzpDict, FilesProcessed, Debug):
+def ProcessSvgsFromFzp(DirProcessing, FzpType, FileType, InFile, OutFile, PrefixDir, Errors, Warnings, Info, FzpDict, FilesProcessed, Debug):
 
     # Process the svg files referenced in the FzpDict created from a Fritzing
     # .fzp file.
 
-    logging.info (' Entering ProcessSvgsFromFzp  FileType %s FzpType %s InFile %s\n', FzpType, FileType, InFile)
+    logging.info (' Entering ProcessSvgsFromFzp DirProcessing %s FzpType %s FileType %s InFile %s\n', DirProcessing,  FzpType, FileType, InFile)
 
     logging.debug (' ProcessSvgsFromFzp: OutFile %s PrefixDir %s FzpDict %s\n', OutFile, PrefixDir, FzpDict)
 
@@ -900,32 +905,19 @@ def ProcessSvgsFromFzp(FileType, FzpType, InFile, OutFile, PrefixDir, Errors, Wa
 
     for CurView in FzpDict['views']:
 
-        logging.debug (' ProcessSvgsFromFzp: Process View %s FzpType %s FzpDict[views] %s\n', CurView, FzpType, FzpDict['views'])
-
-        if CurView == 'iconView':
-
-            # If this is iconview, don't do processing as we aren't going to 
-            # check anything and sometimes the breadboard svg is reused which 
-            # will cause a warning and replace the .bak file (which is 
-            # undesirable)
-
-            logging.debug (' ProcessSvgsFromFzp: Process View %s skipping iconview\n', CurView)
-
-            continue
-
-        # End of if CurView == 'iconview':
+        logging.debug (' ProcessSvgsFromFzp: Process View %s FileType %s FzpDict[views] %s\n', CurView, FileType, FzpDict['views'])
 
         # Extract just the image name as a string from the list entry.
 
         Image = ''.join(FzpDict[CurView + '.image'])
 
-        logging.debug (' ProcessSvgsFromFzp 1: Image %s FzpType %s OutFile %s\n', Image, FzpType, OutFile)
+        logging.debug (' ProcessSvgsFromFzp 1: CurView %s Image %s FzpType %s FileType %s OutFile %s\n', CurView, Image, FzpType, FileType, OutFile)
 
         # indicate we haven't seen an output file rename error. 
 
         OutFileError = 'n'
 
-        if FzpType == 'fzpPart':
+        if FzpType == 'FZPPART':
 
             # The svg is of the form svg.layer.filename in the directory 
             # pointed to by Path. So append a svg. to the file name and 
@@ -982,7 +974,7 @@ def ProcessSvgsFromFzp(FileType, FzpType, InFile, OutFile, PrefixDir, Errors, Wa
 
             # End of if OutFile == None:
 
-        elif FzpType == 'fzpFritz':
+        elif FzpType == 'FZPFRITZ':
 
             # The svg is of the form path../svg/PrefixDir/layername/filename, 
             # so prepend the appropriate path and use that as the file name. 
@@ -1004,11 +996,11 @@ def ProcessSvgsFromFzp(FileType, FzpType, InFile, OutFile, PrefixDir, Errors, Wa
 
             logging.debug (' ProcessSvgsFromFzp: after add  Image NewFile %s\n', NewFile)
 
+            # add the new end path to the end of the source path
+
+            FQInFile = os.path.join(InPath, NewFile)
+
             if OutFile == None:
-
-                # add the new end path to the end of the source path
-
-                FQInFile = os.path.join(InPath, NewFile)
 
                 if Debug == 0:
 
@@ -1056,9 +1048,14 @@ def ProcessSvgsFromFzp(FileType, FzpType, InFile, OutFile, PrefixDir, Errors, Wa
 
             Errors.append('Error 19: File\n\'{0:s}\'\n\nFile type {1:s} is an unknown format (software error)\n'.format(str(InFile), str(FzpType)))
 
-        # End of if FzpType == 'fzpPart':
+            # Don't try and process further as will likely crash due to unset
+            # variables.
 
-        logging.debug (' ProcessSvgsFromFzp: FzpType %s Process %s to %s\n', FzpType, FQInFile, FQOutFile)
+            continue
+
+        # End of if FzpType == 'FZPPART':
+
+        logging.debug (' ProcessSvgsFromFzp: FileType %s Process %s to %s\n', FileType, FQInFile, FQOutFile)
 
         if not os.path.isfile(FQInFile):
 
@@ -1095,7 +1092,7 @@ def ProcessSvgsFromFzp(FileType, FzpType, InFile, OutFile, PrefixDir, Errors, Wa
 
                 logging.debug(' ProcessSvgsFromFzp: InFile %s OutFile %s FzpType %s \n', InFile, OutFile, FzpType)
 
-                if OutFile == None or FzpType == 'dir':
+                if OutFile == None or DirProcessing == 'Y':
 
                     # Then InFile is the fzp file.
 
@@ -1108,40 +1105,95 @@ def ProcessSvgsFromFzp(FileType, FzpType, InFile, OutFile, PrefixDir, Errors, Wa
 
                     Errors.append('Error 21: Svg file\n\n\'{0:s}\'\n\nHas a different case in the file system than in the fzp file\n\n\'{1:s}\'\n'.format(str(FQInFile), str(OutFile)))
 
-                # End of if OutFile == None or FzpType == 'dir':
+                # End of if OutFile == None or DirProcessing == 'Y':
 
             # End of if not TmpFile in os.listdir(TmpPath):
 
-            # Mark that we have processed this file in case this is directory
-            # processing of part.files to avoid double processing the svg files.
-
-            if 'processed.' + FQInFile in FilesProcessed:
-
-                # Already seen, may occur if svgs are shared, so warn as the
-                # .bak file will be overwritten and the user needs to know that 
-
-                logging.debug(' ProcessSvgsFromFzp: FQInFile %s Warning 29 issued. FilesProcessed %s\n', FQInFile, FilesProcessed)
-
-                Warnings.append('Warning 29: File\n\'{0:s}\'\n\nProcessing view {1:s}, File {2:s}\nhas already been processed\nbut will be processed again as part of this fzp file in case of new warnings.\n'.format(str(InFile), str(CurView), str(FQInFile)))
-
-            else:
-
-                logging.debug(' ProcessSvgsFromFzp: FQInFile %s marked as processed.\n', FQInFile)
-
-                FilesProcessed['processed.' + FQInFile] = 'y'
-
-            # End of if 'processed.' + FQInFile in FilesProcessed:
-
             if OutFileError == 'n':
 
+                if CurView == 'iconView':
+
+                    # If this is iconview, don't do processing as we aren't 
+                    # going to check anything and sometimes the breadboard 
+                    # svg is reused which will cause a warning and replace 
+                    # the .bak file (which is undesirable). We do however
+                    # want to have the output file even though we didn't
+                    # do anything to it, so do copy the infile to the outfile
+                    # (so as to leave both the input file and a new outfile)
+                    # if FQOutFile isn't None.
+
+                    if FQOutFile != None and Debug == 0:
+
+                        # If Debug isn't 0, the file names are the same and 
+                        # will cause an exception during the copy. 
+
+                        copyfile(FQInFile, FQOutFile)
+
+                    # End of if FQOutFile != None:
+
+                    logging.debug (' ProcessSvgsFromFzp: Process View %s skipping iconview\n', CurView)
+
+                    continue
+
+                # End of if CurView == 'iconview':
+
+                # Mark that we have processed this file in case this is 
+                # directory processing of part.files to avoid double 
+                # processing the svg files.
+
+                if 'processed.' + FQInFile in FilesProcessed:
+
+                    # Already seen, may occur if svgs are shared, so warn as 
+                    # the .bak file will be overwritten and the user needs to 
+                    # know that 
+
+                    logging.debug(' ProcessSvgsFromFzp: FQInFile %s Warning 29 issued. FilesProcessed %s\n', FQInFile, FilesProcessed)
+
+                    Warnings.append('Warning 29: File\n\'{0:s}\'\n\nProcessing view {1:s}, File {2:s}\nhas already been processed\nbut will be processed again as part of this fzp file in case of new warnings.\n'.format(str(InFile), str(CurView), str(FQInFile)))
+
+                else:
+
+                    logging.debug(' ProcessSvgsFromFzp: FQInFile %s marked as processed.\n', FQInFile)
+
+                    FilesProcessed['processed.' + FQInFile] = 'y'
+
+                # End of if 'processed.' + FQInFile in FilesProcessed:
+
                 # If the file exists and there was not a file rename error then
-                # go and try and process the svg (set the FzpType explicitly 
+                # go and try and process the svg (set the FileType explicitly 
                 # to svg), but first reset the state variables for the new 
                 # file (but not Errors, Warnings, FzpDict or CurView).
 
                 TagStack, State, InheritedAttributes = InitializeState()
 
-                ProcessSvg('svg', FQInFile, FQOutFile, CurView, PrefixDir,  Errors, Warnings, Info, FzpDict, FilesProcessed, TagStack, State, InheritedAttributes, Debug)
+                ProcessSvg(FzpType, 'SVG', FQInFile, FQOutFile, CurView, PrefixDir,  Errors, Warnings, Info, FzpDict, FilesProcessed, TagStack, State, InheritedAttributes, Debug)
+
+                # We are finished processing this file from an fzp, and it 
+                # isn't the icon file (which doesn't have connectors) because
+                # that was caught above, so check the connectors on this svg 
+                # file to make sure they are all present.
+
+                logging.debug  (' ProcessSvgsFromFzp: Checking connectors for %s\n', InFile)
+
+                for Connector in FzpDict['connectors.fzp.' + CurView]:
+
+                    # Check that the connector is in the svg and error if not. 
+
+                    logging.debug  (' ProcessSvgsFromFzp: Checking connector %s\n', Connector)
+
+                    if not 'connectors.svg.' + CurView in FzpDict:
+
+                        Errors.append('Error 17: File\n\'{0:s}\'\n\nNo connectors found for view {1:s}.\n'.format(str(InFile), str(CurView)))
+
+                    elif not Connector in FzpDict['connectors.svg.' + CurView]:
+
+                        logging.debug  (' ProcessSvgsFromFzp: Connector %s missing\n', Connector)
+
+                        Errors.append('Error 18: File\n\'{0:s}\'\n\nConnector {1:s} is in the fzp file but not the svg file. (typo?)\n\nsvg {2:s}\n'.format(str(InFile), str(Connector), str(FQInFile)))
+
+                    # End of if not 'connectors.svg.' + CurView in FzpDict:
+                
+                # End of `for Connector in FzpDict['connectors.fzp.' + CurView]:
 
                 if CurView == 'schematicView' and 'subparts' in FzpDict:
 
@@ -1175,7 +1227,7 @@ def ProcessSvgsFromFzp(FileType, FzpType, InFile, OutFile, PrefixDir, Errors, Wa
 
                                 Errors.append('Error 79: Svg file\n\n\'{0:s}\'\n\nSubpart {1:s} is missing connector {2:s} in the svg\n'.format(str(FQInFile), str(SubPart), str(SubpartConnector)))
 
-                                logging.debug(' ProcessSvgsFromFzp: x6 no connector %s in svg, SubpartConnector %s\n',SubpartConnector, SubPart)
+                                logging.debug(' ProcessSvgsFromFzp: Error 79: no connector %s in svg, SubpartConnector %s\n',SubpartConnector, SubPart)
 
                             # if not SubPart + '.svg.subparts' in FzpDict:
 
@@ -1193,13 +1245,13 @@ def ProcessSvgsFromFzp(FileType, FzpType, InFile, OutFile, PrefixDir, Errors, Wa
 
     logging.info (' Exiting ProcessSvgsFromFzp\n')
 
-# End of def ProcessSvgsFromFzp(FileType, FzpType, InFile, OutFile, PrefixDir, Errors, Warnings, Info, FzpDict, Debug):
+#End of def ProcessSvgsFromFzp(FzpType, FileType, InFile, OutFile, PrefixDir, Errors, Warnings, Info, FzpDict, FilesProcessed, Debug):
 
-def ProcessFzpLeafNode(FzpType, InFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
+def ProcessFzpLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
 
     # We are processing an fzp file so do the appropiate things for that. 
 
-    logging.info (' Entering ProcessFzpLeafNode FzpType %s Infile %s Level %s\n', FzpType, InFile, Level)
+    logging.info (' Entering ProcessFzpLeafNode FileType %s Infile %s Level %s\n', FzpType, InFile, Level)
 
     # Regex to detect comment lines (ignoring case)
 
@@ -1477,7 +1529,7 @@ def ProcessFzpLeafNode(FzpType, InFile, CurView, PrefixDir, Elem, Errors, Warnin
 
     logging.info (' Exiting ProcessFzpLeafNode Level %s\n', Level)
 
-# End of def ProcessFzpLeafNode(FzpType, InFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
+# End of def ProcessFzpLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
 
 def FzpTags(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, Level):
 
@@ -1594,7 +1646,7 @@ def FzpmoduleId(FzpType, InFile, Elem, Errors, Warnings, Info, FzpDict, State, L
 
         logging.debug(' FzpmoduleId: FzpType %s InFile %s File %s\n', FzpType, InFile,  File)
 
-        if FzpType == 'fzpPart':
+        if FzpType == 'FZPPART':
 
             # This is a part. type file so remove the "part." from the
             # file name before the compare.
@@ -1603,7 +1655,7 @@ def FzpmoduleId(FzpType, InFile, Elem, Errors, Warnings, Info, FzpDict, State, L
 
             logging.debug(' FzpmoduleId: removed part. to leave %s\n', File)
 
-        # End of if FzpType == 'fzpPart':
+        # End of if FzpType == 'FZPPART':
 
         # Then remove the trailing ".fzp"
 
@@ -2275,9 +2327,15 @@ def FzpProcessConnectorsTs4(InFile, Elem, Errors, Warnings, Info, FzpDict, TagSt
     
         elif Name in FzpDict:
 
-            # If it is a dup, warning!
+            # If it is a dup, warning if such warnings are enabled!
+    
+            logging.debug (' FzpProcessConnectorsTs4 source line %s Name %s  IssueNameDupWarning \'%s\'\n', Elem.sourceline, Name, IssueNameDupWarning)
 
-            DupNameWarning(InFile, Name, Elem, Warnings)
+            if IssueNameDupWarning == 'y': 
+
+                DupNameWarning(InFile, Name, Elem, Warnings)
+
+            # End of if IssueNameDupWarning == 'y': 
     
         else:
     
@@ -3398,9 +3456,9 @@ def FzpProcessSchematicPartsTs6(InFile, Elem, Errors, Warnings, Info, FzpDict, T
 
 # End of def FzpProcessSchematicPartsTs6(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
 
-def FzpCheckConnectors(InFile, Elem, FzpDict, Errors, Warnings, Info, State, Level):
+def FzpCheckConnectors(InFile, Elem, FzpDict, Errors, Warnings, Info, State):
 
-    logging.info (' Entering FzpCheckConnectors Level %s\n', Level)
+    logging.info (' Entering FzpCheckConnectors\n')
 
     if not 'pinnos' in FzpDict or len(FzpDict['pinnos']) == 0:
 
@@ -3416,24 +3474,12 @@ def FzpCheckConnectors(InFile, Elem, FzpDict, Errors, Warnings, Info, State, Lev
 
         logging.debug (' FzpCheckConnectors: pinnos %s\n',FzpDict['pinnos'])
 
-        if not 'pinnosmsg' in State:
-
-            # Only output a pin number message once per file.
-
-            if not '0' in FzpDict['pinnos']:
-
-                Errors.append('Error 63: File\n\'{0:s}\'\n\nConnector0 doesn\'t exist (connectors should start at 0)\n'.format(str(InFile)))
-
-            # End of if not '0' in FzpDict['pinnos']:
-
-            State['pinnosmsg'] = 'y'
-
-        # End of if not 'pinnosmsg' in State:
-        
         for Pin in range(len(FzpDict['pinnos'])):
     
             # Mark an error if any number in sequence doesn't exist as the 
             # connector numbers must be contiguous. 
+
+            logging.debug (' FzpCheckConnectors: Pin %s\n', Pin)
 
             if not 'pinnosmsg' in State:
 
@@ -3455,15 +3501,15 @@ def FzpCheckConnectors(InFile, Elem, FzpDict, Errors, Warnings, Info, State, Lev
 
     # End of if not pinnos in FzpDict or len(FzpDict['pinnos']) == 0:
 
-    logging.info (' Exiting FzpCheckConnectors Level %s\n', Level)
+    logging.info (' Exiting FzpCheckConnectors\n')
 
-# End of def FzpCheckConnectors(InFile, Elem, FzpDict, Errors, Warnings, Info, State, Level):
+# End of def FzpCheckConnectors(InFile, Elem, FzpDict, Errors, Warnings, Info, State):
 
-def ProcessSvg(FzpType, InFile, OutFile, CurView, PrefixDir, Errors, Warnings, Info, FzpDict, FilesProcessed, TagStack, State, InheritedAttributes, Debug):
+def ProcessSvg(FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Errors, Warnings, Info, FzpDict, FilesProcessed, TagStack, State, InheritedAttributes, Debug):
 
     logging.info (' Entering ProcessSvg\n')
 
-    logging.debug ('  ProcessSvg: FzpType %s InFile %s OutFile %s CurView %s\n', FzpType, InFile, OutFile, CurView)
+    logging.debug ('  ProcessSvg: FileType %s InFile %s OutFile %s CurView %s\n', FileType, InFile, OutFile, CurView)
 
     # Parse the input document.
 
@@ -3479,7 +3525,7 @@ def ProcessSvg(FzpType, InFile, OutFile, CurView, PrefixDir, Errors, Warnings, I
         # this is only an svg file without an associated fzp, the FzpDict 
         # will be empty as there is no fzp data to check the svg against. 
 
-        ProcessTree(FzpType, InFile, OutFile, CurView, PrefixDir, Root, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug)
+        ProcessTree(FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Root, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug)
 
         if not 'fzp' in FzpDict and 'pcbsvg' in State:
     
@@ -3490,13 +3536,13 @@ def ProcessSvg(FzpType, InFile, OutFile, CurView, PrefixDir, Errors, Warnings, I
 
         # End of if not 'fzp' in FzpDict:
 
-        PP.OutputTree(Doc, Root, FzpType, InFile, OutFile, Errors, Warnings, Info, Debug)
+        PP.OutputTree(Doc, Root, FileType, InFile, OutFile, Errors, Warnings, Info, Debug)
 
     # End of if Doc != None:
 
     logging.info (' Exiting ProcessSvg\n')
 
-# End of def ProcessSvg(FzpType, InFile, OutFile, CurView, PrefixDir, Errors, Warnings, Info, FzpDict, FilesProcessed, TagStack, State, InheritedAttributes, Debug):
+# End of def ProcessSvg(FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Errors, Warnings, Info, FzpDict, FilesProcessed, TagStack, State, InheritedAttributes, Debug):
 
 def RemovePx(InFile, Elem, Info, Level):
 
@@ -3531,11 +3577,11 @@ def RemovePx(InFile, Elem, Info, Level):
 # End of def RemovePx(InFile, Elem, Info):
 
 
-def ProcessSvgLeafNode(FzpType, InFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Level):
+def ProcessSvgLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Level):
 
     logging.info (' Entering ProcessSvgLeafNode Level %s\n', Level)
 
-    logging.debug (' ProcessSvgLeafNode: Entry File %s Source line %s FzpType %s CurView %s State %s\n',InFile, Elem.sourceline, FzpType, CurView, State)
+    logging.debug (' ProcessSvgLeafNode: Entry File %s Source line %s FileType %s CurView %s State %s\n',InFile, Elem.sourceline, FileType, CurView, State)
 
     NameSpaceRegex = re.compile(r'{.+}')
 
@@ -3971,7 +4017,7 @@ def ProcessSvgLeafNode(FzpType, InFile, CurView, PrefixDir, Elem, Errors, Warnin
 
     logging.info (' Exiting ProcessSvgLeafNode Level %s\n', Level)
 
-# End of def ProcessSvgLeafNode(FzpType, InFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Level):
+# End of def ProcessSvgLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Level):
 
 def SvgStartElem(InFile, Elem, Errors, Warnings, Info, State, Level):
 
@@ -4089,7 +4135,7 @@ def SvgRefFile(FzpType, InFile, Elem, Errors, Warnings, Info, State, Level):
 
     logging.debug (' SvgRefFile: File %s\n', File)
 
-    if FzpType == 'fzpPart':
+    if FzpType == 'FZPPART':
 
         # This is a part. type file so remove the "svg." from the
         # file name before the compare.
@@ -4098,7 +4144,7 @@ def SvgRefFile(FzpType, InFile, Elem, Errors, Warnings, Info, State, Level):
 
         logging.debug (' SvgRefFile: Corrected file %s\n', File)
 
-    # End of if FzpType == 'fzpPart':
+    # End of if FzpType == 'FZPPART':
 
     if Elem.text != File:
 
@@ -4638,7 +4684,7 @@ def SvgInlineStyle(InFile, Elem, Warnings, State):
     # If there is a style command in the attributes, convert it to inline
     # xml (overwriting current values if present). 
     
-    logging.info (' Entering SVGInlineStyle\n')
+    logging.info (' Entering SvgInlineStyle\n')
 
     # Get the current style values if any
 
@@ -4648,7 +4694,7 @@ def SvgInlineStyle(InFile, Elem, Warnings, State):
 
         # Delete the current style attribute
 
-        logging.debug (' SVGInlineStyle: delete style: %s\n', ElemAttributes)
+        logging.debug (' SvgInlineStyle: delete style: %s\n', ElemAttributes)
 
         Elem.attrib.pop("style", None)
 
@@ -4657,21 +4703,35 @@ def SvgInlineStyle(InFile, Elem, Warnings, State):
 
         Attributes = ElemAttributes.split(';')
 
-        logging.debug (' SVGInlineStyle: attributes %s line %s\n', Attributes, Elem.sourceline)
+        logging.debug (' SvgInlineStyle: attributes %s line %s\n', Attributes, Elem.sourceline)
 
         for Attribute in Attributes:
 
             KeyValue = Attribute.split (':')
 
+            logging.debug (' SvgInlineStyle: Attribute %s KeyValue %s\n', Attribute, KeyValue)
+
             # Then set the pair as attribute=value
 
-            logging.debug (' SVGInlineStyle: attribute %s key len %s key[0] %s\n', Attribute, str(len(KeyValue)), KeyValue[0])
+            logging.debug (' SvgInlineStyle: attribute %s key len %s key[0] %s\n', Attribute, str(len(KeyValue)), KeyValue[0])
 
             if len(KeyValue) == 2:
 
                 # The attribute has a value so set it. At least one file has
                 # a trailing ';' without a tag / value pair which breaks here
                 # if this test isn't made. Probably invalid xml but harmless.
+                # Whitespace (I think only leading whitespace) in the i
+                # attributes also causes this exception so remove any leading
+                # white space (because there is at least one file that not 
+                # doing so breaks!).
+
+                logging.debug (' SvgInlineStyle: before regex KeyValue\[0\] \'%s\' KeyValue\[1\] \'%s\'\n', KeyValue[0], KeyValue[1])
+
+                KeyValue[0] = re.sub(r'^\s+','', KeyValue[0])
+
+                KeyValue[1] = re.sub(r'^\s+','', KeyValue[1])
+
+                logging.debug (' SvgInlineStyle: after regex KeyValue\[0\] \'%s\' KeyValue\[1\] \'%s\'\n', KeyValue[0], KeyValue[1])
 
                 try:
                 
@@ -4687,7 +4747,7 @@ def SvgInlineStyle(InFile, Elem, Warnings, State):
 
                     if not KeyValue[0] in State['KeyErrors']:
 
-                        logging.debug (' SVGInlineStyle: KeyValue\[0\] %s State %s\n', KeyValue[0], State)
+                        logging.debug (' SvgInlineStyle: KeyValue\[0\] %s State %s\n', KeyValue[0], State)
 
                         # Haven't seen this one yet so log it.
 
@@ -4697,7 +4757,7 @@ def SvgInlineStyle(InFile, Elem, Warnings, State):
 
                         State['KeyErrors'].append(KeyValue[0])
 
-                        logging.debug (' SVGInlineStyle: attribute %s %s is invalid, deleted\n', KeyValue[0], KeyValue[1])
+                        logging.debug (' SvgInlineStyle: attribute %s %s is invalid, deleted\n', KeyValue[0], KeyValue[1])
 
                     # End of if not KeyValue[0] in State['KeyErrors']:
 
