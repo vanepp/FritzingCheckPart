@@ -207,7 +207,8 @@ least some cases).
 
 Configuration:
 
-There are three internal configuration settings:
+There are four internal configuration settings (you need to edit the listed
+.py file and change these with a text editor):
 
 1) in file PPTools.py
 
@@ -222,8 +223,8 @@ works without the detailed prettyprinting please file a bug.
 ModifyTerminal = 'n'
 
 Disabled by default because it will make a change that will change the spacing
-of the terminal position in the svg which you will manually need to correct 
-using an svg editor if the width or height is 0. I enable this (by setting the
+of the terminal position in the svg, which you will manually need to correct 
+using an svg editor, if the width or height is 0. I enable this (by setting the
 value to 'y') and then pay attention to the modifed messages to tell when it
 has changed a terminal from 0. If the terminal is 0 width or height at least
 Inkscape (which I use) will not select the element to move it. You have to
@@ -242,7 +243,7 @@ This warning is all that it will do. It is up to you to edit the svg and set
 the height/width to something other than 0 and correct the x/y positioning. 
 
 	With the value set to 'y' on the same file (in this case changed to an
-exported part so as to not change core whihc will break parts update, but the 
+exported part so as to not change core which will break parts update, but the 
 same file as above) there is a different message in a different place:
 
 Modified 2: File
@@ -264,10 +265,22 @@ terminal which it wouldn't before.
 
 3) in file FritzingCheckPart.py
 
+IssueNameDupWarning = 'y'
+
+This value (enabled by default) if set to 'n' will supress the Warning 28:
+message which indictes the name field is not unique. While it should be 
+unique according to the parts file format document, Fritzing doesn't appear
+to care and it seems to be only used for display in pin labels when hovered
+over. It is fairly common to not be unique and thus clutters up the error
+message display. I usually set this to 'n'.
+
+4) in file FritzingCheckPart.py
+
 Debug = 0
 
-This value enables debug messages (set to 1 for enter/exit routine messages,
-and to 2 for detailied but very verbose debug messages). It is used for 
+This value enables debug messages (set to 1 for file output to the console
+but no further debug messages, set to 2 for enter/exit routine debug messages,
+and to 3 for detailied but very verbose debug messages). It is used for 
 debugging the script itself so you will normally leave it at 0 for normal 
 operation. 
 
@@ -349,9 +362,47 @@ file if you need to. The input file will give you the place in the file that
 the error occurred and you should fix it there and then remove the .bak 
 extension and re run the script in the corrected input file. 
 
+Usage messages (which are a type of error as they are fatal, but don't have
+numbers any more)
+
+
+Usage: PP.py filename (filename ...)
+
+	Indicates you didn't give a filename to the PP.py script. It wants 
+	one or more xml files such as
+
+	PP.py test.svg 
+
+	or 
+
+	PP.py test1.svg test2.xml test3.fzp
+
+
+Usage: FritzingTools.py filename.fzp or filename.svg or srcdir dstdir
+
+	Either no or too many arguments to the script. It wants either a 
+	single file name or 2 directories. 
+
+
+Usage: FritzingTools.py src_dir dst_dir
+
+src_dir filename isn\'t a directory
+
+	In this mode both arguments need to be directories and src isn't. 
+
+
+Usage: FritzingTools.py src_dir dst_dir
+
+dst_dir filename isn\'t a directory
+
+	In this mode both arguments need to be directories and dst isn't. 
+
+
+
 Error messages in the order they occur in the code so essentially random
 but numbered so you can index by the number to get the error description
-and an explaination of the errror.  
+and an explaination of the errror (with the move of the Usage messages
+above, some numbers are now missing though.)  
 
 
 Error 1: Can not rename filename os_error_message (os_error_number)
@@ -409,28 +460,10 @@ Error 6: ParseFile error parsing the input xml file filename
 	though the part with these errors loads and runs happily in Fritzing. 
 
 
-Usage 7: PP.py filename (filename ...)
-
-	Indicates you didn't give a filename to the PP.py script. It wants 
-	one or more xml files such as
-
-	PP.py test.svg 
-
-	or 
-
-	PP.py test1.svg test2.xml test3.fzp
-
-
 Error 8: filename isn't a file: ignored
 
 	The file name provided either isn't a file or isn't readable and has
 	been ignored. 
-
-
-Usage 9: FritzingTools.py filename.fzp or filename.svg or srcdir dstdir
-
-	Either no or too many arguments to the script. It wants either a 
-	single file name or 2 directories. 
 
 
 Error 10: There must be a directory that is not '.' or '..' in the input name 
@@ -439,20 +472,6 @@ for a fzp file in order to find the svg files.
 	Indicates that it needs a directory (for example core/file.fzp) in
 	order to figure out where the svg files are (../svg/core/... in this
 	case). Supply the directory and it will be happy. 
-
-
-Usage 11: FritzingTools.py src_dir dst_dir
-
-src_dir filename isn\'t a directory
-
-	In this mode both arguments need to be directories and src isn't. 
-
-
-Usage 12: FritzingTools.py src_dir dst_dir
-
-dst_dir filename isn\'t a directory
-
-	In this mode both arguments need to be directories and dst isn't. 
 
 
 Error 13: dst dir

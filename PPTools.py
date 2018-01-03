@@ -4,10 +4,12 @@
 # other xml as well.)
 
 # Enable detail pretty printing of svg files. If you suspect the detail pretty
-# printing is causeing problems, set this to 'n' to disable detail pretty i
+# printing is causeing problems, set this to 'n' to disable detail pretty 
 # printing (and if that fixes it, please report the bug).
 
-DetailPP = 'y'
+DetailPP = 'Y'
+
+Version = '0.0.2'  # Version number of this file.
 
 # Import os and sys to get file rename and the argv stuff, re for regex and 
 # logging to get logging support. 
@@ -295,7 +297,7 @@ def PrettyPrintElements(XmlIn, Errors, Debug):
 
 # End of def PrettyPrintElements(XmlIn, Errors, Debug):
 
-def OutputTree(Doc, Root, FzpType, InFile, OutFile, Errors, Warnings, Info, Debug):
+def OutputTree(Doc, Root, FileType, InFile, OutFile, Errors, Warnings, Info, Debug):
 
     # Prettyprint the xml and write it to a file or the console (depending on
     # the debug setting). If OutFile is None rename the InFile to InFile.bak
@@ -325,7 +327,7 @@ def OutputTree(Doc, Root, FzpType, InFile, OutFile, Errors, Warnings, Info, Debu
 	
     XmlIn = ByteStr.decode(Doc.docinfo.encoding)
 	
-    if FzpType == 'svg' and DetailPP == 'y':
+    if FileType == 'SVG' and DetailPP == 'Y':
 
         # If this is an svg file (as opposed to an fpz file) then do a 
         # a finer grained pretty print inside the elements as well.
@@ -340,7 +342,7 @@ def OutputTree(Doc, Root, FzpType, InFile, OutFile, Errors, Warnings, Info, Debu
 
         XmlPP = XmlIn
 
-    # End of if FzpType == 'svg':
+    # End of if FileType == 'SVG':
 
 
     logging.debug('  OutputTree Start OutFile %s Debug %s\n', OutFile, Debug)
@@ -459,7 +461,7 @@ def OutputTree(Doc, Root, FzpType, InFile, OutFile, Errors, Warnings, Info, Debu
 
     logging.info (' Exiting OutputTree\n')
 
-# End of def OutputTree(Doc, Root, FzpType, InFile, OutFile, Errors, Warnings, Info, Debug):
+# End of def OutputTree(Doc, Root, FileType, InFile, OutFile, Errors, Warnings, Info, Debug):
 
 def ParseFile (File, Errors):
 
