@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 # A Fritzing part check script. This will read various types of Fritzing files
 # (.fzp and .svg) and both check them for correctness and converting xml

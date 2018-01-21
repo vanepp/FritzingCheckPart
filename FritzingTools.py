@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 # Various support routines for processing Fritzing's fzp and svg files. 
 
