@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 # The support routines for pretty printing Fritzing svg files (and possibly
 # other xml as well.)

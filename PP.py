@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 # A python xml pretty_print script written to pretty print svg files from 
 # Inkscape, but should work on pretty much any xml. 
