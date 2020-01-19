@@ -1,23 +1,23 @@
 #!/usr/bin/env python3
 
-# Various support routines for processing Fritzing's fzp and svg files. 
+# Various support routines for processing Fritzing's fzp and svg files.
 
 # Change this from 'no' to 'yes' to cause 0 length/width terminal definitions
 # to be warned about but not modified, to being changed (which will cause them
-# to move in the svg and need repositioning) to a length/width of 10 (which 
+# to move in the svg and need repositioning) to a length/width of 10 (which
 # depending on scaling may or may not be .01in). The default is warn but not
 # change, but I use modify as it is much easier converting 0 width parts with
 # Inkscape like that.
 
-ModifyTerminal = 'n'
+ModifyTerminal = 'y'
 
-# Set to 'n' (or anything not 'y') to supress Warning 28: (dup id in 
+# Set to 'n' (or anything not 'y') to supress Warning 28: (dup id in
 # description field) which is all of common, annoying and harmless.
 # However by default the warning is issued ...
 
-IssueNameDupWarning = 'n'
+IssueNameDupWarning = 'y'
 
-Version = '0.0.2'  # Version number of this file. 
+Version = '0.0.2'  # Version number of this file.
 
 # Import copyfile
 
@@ -26,11 +26,16 @@ from shutil import copyfile
 # Import os and sys to get file rename and the argv stuff, re for regex,
 # logging to get logging support and PPTools for the parse routine
 
-import os, sys, re, logging, PPTools as PP
+import os
+import sys
+import re
+import logging
+import PPTools as PP
 
 # and the lxml library for the xml
 
 from lxml import etree
+
 
 def InitializeAll():
 
@@ -58,35 +63,39 @@ def InitializeAll():
 
     TagStack = [['empty', 0]]
 
-    State={'lasttag': 'none', 'nexttag': 'none', 'lastvalue': 'none', 'image': 'none', 'noradius': [], 'KeyErrors': []}
+    State = {'lasttag': 'none', 'nexttag': 'none', 'lastvalue': 'none',
+             'image': 'none', 'noradius': [], 'KeyErrors': []}
 
-    InheritedAttributes=None
+    InheritedAttributes = None
 
     return Errors, Warnings, Info, FzpDict, CurView, TagStack, State, InheritedAttributes
 
 # End of def InitializeAll():
 
+
 def InitializeState():
 
-    # Initialize only the state related global variables (not the PrefixDir, 
-    # Errors, Warnings or dictionary) to start processing a different file 
-    # such as an svg linked from a fzp. 
+    # Initialize only the state related global variables (not the PrefixDir,
+    # Errors, Warnings or dictionary) to start processing a different file
+    # such as an svg linked from a fzp.
 
     TagStack = [['empty', 0]]
 
-    State={'lasttag': 'none', 'nexttag': 'none', 'lastvalue': 'none', 'image': 'none', 'noradius': [], 'KeyErrors': []}
+    State = {'lasttag': 'none', 'nexttag': 'none', 'lastvalue': 'none',
+             'image': 'none', 'noradius': [], 'KeyErrors': []}
 
-    InheritedAttributes=None
+    InheritedAttributes = None
 
     return TagStack, State, InheritedAttributes
 
 # End of def InitializeState():
 
+
 def ProcessArgs(Argv, Errors):
 
-    # Process the input arguments on the command line. 
+    # Process the input arguments on the command line.
 
-    logging.info (' Entering ProcessArgs\n')
+    logging.info(' Entering ProcessArgs\n')
 
     # Regex to match '.svg' to find svg files
 
@@ -100,13 +109,15 @@ def ProcessArgs(Argv, Errors):
 
     PartRegex = re.compile(r'^part\.', re.IGNORECASE)
 
-    # Regex to match 'part.filename' for substitution for both unix and windows.
+    # Regex to match 'part.filename' for substitution for both unix and
+    # windows.
 
-    PartReplaceRegex = re.compile(r'^part\..*$|\/part\..*$|\\part\..*$', re.IGNORECASE)
+    PartReplaceRegex = re.compile(
+        r'^part\..*$|\/part\..*$|\\part\..*$', re.IGNORECASE)
 
     # Set the return values to the error return (really only FileType needs
     # to be done, but do them all for consistancy. Set PrefixDir and Path
-    # to striing constants (not None) for the dir routines. 
+    # to striing constants (not None) for the dir routines.
 
     FileType = None
 
@@ -124,32 +135,35 @@ def ProcessArgs(Argv, Errors):
 
     if len(sys.argv) == 3:
 
-        # If we have two directories, one empty, process all the fzp files in 
-        # the first directory in to the empty second directory, creating 
-        # subdirectories as needed (but no backup files!) 
+        # If we have two directories, one empty, process all the fzp files in
+        # the first directory in to the empty second directory, creating
+        # subdirectories as needed (but no backup files!)
 
-        DirProcessing, PrefixDir, Path, File, SrcDir, DstDir = ProcessDirArgs(Argv, Errors)
+        DirProcessing, PrefixDir, Path, File, SrcDir, DstDir = ProcessDirArgs(
+            Argv, Errors)
 
         if DirProcessing == 'Y':
 
             # Success, so set FileType to 'dir' from None to indicate no
-            # error is present and to continue processing. 
-    
+            # error is present and to continue processing.
+
             FileType = 'dir'
 
         # End of if (DirProcessing == 'Y':
 
-        logging.info (' Exiting ProcessArgs\n')
+        logging.info(' Exiting ProcessArgs\n')
 
         return FileType, DirProcessing, PrefixDir, Path, File, SrcDir, DstDir
 
     elif len(sys.argv) != 2:
 
-        # No input file or too many arguments so print a usage message and exit.
+        # No input file or too many arguments so print a usage message and
+        # exit.
 
-        Errors.append('Usage: {0:s} filename.fzp or filename.svg or srcdir dstdir\n'.format(str(sys.argv[0])))
+        Errors.append('Usage: {0:s} filename.fzp or filename.svg or srcdir dstdir\n'.format(
+            str(sys.argv[0])))
 
-        logging.info (' Exiting ProcessArgs\n')
+        logging.info(' Exiting ProcessArgs\n')
 
         return FileType, DirProcessing, PrefixDir, Path, File, SrcDir, DstDir
 
@@ -159,27 +173,29 @@ def ProcessArgs(Argv, Errors):
 
         InFile = sys.argv[1]
 
-        logging.debug (' ProcessArgs: input filename %s\n', InFile)
+        logging.debug(' ProcessArgs: input filename %s\n', InFile)
 
-        logging.debug (' ProcessArgs: isfile %s\n', os.path.isfile(InFile))
+        logging.debug(' ProcessArgs: isfile %s\n', os.path.isfile(InFile))
 
-        logging.debug (' ProcessArgs: svg %s\n', SvgExtRegex.search(InFile))
+        logging.debug(' ProcessArgs: svg %s\n', SvgExtRegex.search(InFile))
 
-        logging.debug (' ProcessArgs: fzp %s\n', FzpExtRegex.search(InFile))
+        logging.debug(' ProcessArgs: fzp %s\n', FzpExtRegex.search(InFile))
 
-        if (not os.path.isfile(InFile) or 
+        if (not os.path.isfile(InFile) or
                 (SvgExtRegex.search(InFile) == None and
-                FzpExtRegex.search(InFile) == None)):
+                 FzpExtRegex.search(InFile) == None)):
 
             # Input file isn't valid, return a usage message.
 
-            Errors.append('Usage: {0:s} filename.fzp or filename.svg or srcdir dstdir\n\n\'{1:s}\'\n\neither isn\'t a file or doesn\'t end in .fzp or .svg\n'.format(str(sys.argv[0]),  str(InFile)))
+            Errors.append('Usage: {0:s} filename.fzp or filename.svg or srcdir dstdir\n\n\'{1:s}\'\n\neither isn\'t a file or doesn\'t end in .fzp or .svg\n'.format(
+                str(sys.argv[0]),  str(InFile)))
 
-            logging.info (' Exiting ProcessArgs\n')
+            logging.info(' Exiting ProcessArgs\n')
 
             return FileType, DirProcessing, PrefixDir, Path, File, SrcDir, DstDir
 
-        # End of if not os.path.isfile(InFile) and not SvgExtRegex.search(InFile) and not FzpExtRegex.search(InFile):
+        # End of if not os.path.isfile(InFile) and not
+        # SvgExtRegex.search(InFile) and not FzpExtRegex.search(InFile):
 
         Path = ''
 
@@ -195,7 +211,7 @@ def ProcessArgs(Argv, Errors):
 
         # End of if not Path:
 
-        # and then get the filename 
+        # and then get the filename
 
         File = os.path.basename(InFile)
 
@@ -205,56 +221,60 @@ def ProcessArgs(Argv, Errors):
 
             FileType = 'SVG'
 
-            logging.debug (' ProcessArgs: Found svg input file %s set FileType %s\n', InFile, FileType)
+            logging.debug(
+                ' ProcessArgs: Found svg input file %s set FileType %s\n', InFile, FileType)
 
         else:
 
-            # this is an fzp file of some kind so figure out which kind and 
+            # this is an fzp file of some kind so figure out which kind and
             # set the appropriate path.
 
             pat = PartRegex.search(File)
 
-            logging.debug (' ProcessArgs: Found svg input file %s Match %s\n', InFile, pat)
-    
+            logging.debug(
+                ' ProcessArgs: Found svg input file %s Match %s\n', InFile, pat)
+
             if PartRegex.search(File):
-    
+
                 # It is a part. type fzp, thus the svgs are in this same
-                # directory named svg.image_type.filename so set FileType 
+                # directory named svg.image_type.filename so set FileType
                 # to fzpPart to indicate that.
-    
+
                 FileType = 'FZPPART'
 
-                logging.debug (' ProcessArgs: Set filetype FZPPART\n')
-    
-            else:
-    
-                # This is a Fritzing internal type fzp and thus the svgs are in
-                # svg/PrefixDir/image_type/filename.svg. So make sure we have a 
-                # prefix directory on the input file. 
+                logging.debug(' ProcessArgs: Set filetype FZPPART\n')
 
-                # get the path from the input file. 
+            else:
+
+                # This is a Fritzing internal type fzp and thus the svgs are in
+                # svg/PrefixDir/image_type/filename.svg. So make sure we have a
+                # prefix directory on the input file.
+
+                # get the path from the input file.
 
                 Path = os.path.dirname(InFile)
 
                 # and the file name
 
-                File =  os.path.basename(InFile)
-    
+                File = os.path.basename(InFile)
+
                 SplitDir = os.path.split(Path)
-    
+
                 if SplitDir[1] == '' or SplitDir[1] == '.' or SplitDir[1] == '..':
-    
-                    Errors.append('Error 10: There must be a directory that is not \'.\' or \'..\' in the input name for\na fzp file in order to find the svg files.\n')
-    
-                    logging.info (' Exiting ProcessArgs no prefix dir error\n')
-    
+
+                    Errors.append(
+                        'Error 10: There must be a directory that is not \'.\' or \'..\' in the input name for\na fzp file in order to find the svg files.\n')
+
+                    logging.info(' Exiting ProcessArgs no prefix dir error\n')
+
                     return FileType, DirProcessing, PrefixDir, Path, File, SrcDir, DstDir
-    
-                # End of if SplitDir[1] == '' or SplitDir[1] == '.' or SplitDir[1] == '..':
-        
+
+                # End of if SplitDir[1] == '' or SplitDir[1] == '.' or
+                # SplitDir[1] == '..':
+
                 Path = SplitDir[0]
-        
-                PrefixDir =  SplitDir[1]
+
+                PrefixDir = SplitDir[1]
 
                 if PrefixDir == None:
 
@@ -264,32 +284,35 @@ def ProcessArgs(Argv, Errors):
                     PrefixDir = ""
 
                 # End of if PrefixDir == None:
-        
-                # then so set FileType to fzpFritz to indicate that. 
-    
+
+                # then so set FileType to fzpFritz to indicate that.
+
                 FileType = 'FZPFRITZ'
-    
-                logging.debug (' Found Fritzing type input file %s path %s\n', InFile, Path)
+
+                logging.debug(
+                    ' Found Fritzing type input file %s path %s\n', InFile, Path)
 
             # End of if PartRegex.search(File):
-    
+
         # End of if SvgExtRegex.search(File):
 
     # End of if len(sys.argv) == 3:
 
-    logging.debug (' ProcessArgs: End of ProcessArgs return FileType %s PrefixDir %s Path %s File %s\n', FileType, PrefixDir, Path, File)
+    logging.debug(' ProcessArgs: End of ProcessArgs return FileType %s PrefixDir %s Path %s File %s\n',
+                  FileType, PrefixDir, Path, File)
 
-    logging.info (' Exiting ProcessArgs\n')
+    logging.info(' Exiting ProcessArgs\n')
 
     return FileType, DirProcessing, PrefixDir, Path, File, SrcDir, DstDir
 
 # End of def ProcessArgs(Argv, Errors):
 
+
 def ProcessDirArgs(argv, Errors):
 
-    logging.info (' Entering ProcessDirArgs\n')
+    logging.info(' Entering ProcessDirArgs\n')
 
-    # Clear the return variables in case of error. 
+    # Clear the return variables in case of error.
 
     DirProcessing = 'N'
 
@@ -309,9 +332,10 @@ def ProcessDirArgs(argv, Errors):
 
     if not os.path.isdir(SrcDir):
 
-        Errors.append('Usage: {0:s} src_dir dst_dir\n\nsrc_dir {1:s} isn\'t a directory\n'.format(sys.argv[0], SrcDir))
+        Errors.append('Usage: {0:s} src_dir dst_dir\n\nsrc_dir {1:s} isn\'t a directory\n'.format(
+            sys.argv[0], SrcDir))
 
-        logging.info (' Exiting ProcessDirArgs src dir error\n')
+        logging.info(' Exiting ProcessDirArgs src dir error\n')
 
         return DirProcessing, PrefixDir, Path, File, SrcDir, DstDir
 
@@ -321,9 +345,10 @@ def ProcessDirArgs(argv, Errors):
 
     if not os.path.isdir(DstDir):
 
-        Errors.append('Usage: {0:s} src_dir dst_dir\n\ndst_dir {1:s} Isn\'t a directory\n'.format(sys.argv[0], DstDir))
+        Errors.append('Usage: {0:s} src_dir dst_dir\n\ndst_dir {1:s} Isn\'t a directory\n'.format(
+            sys.argv[0], DstDir))
 
-        logging.info (' Exiting ProcessDirArgs dst dir error\n')
+        logging.info(' Exiting ProcessDirArgs dst dir error\n')
 
         return DirProcessing, PrefixDir, Path, File, SrcDir, DstDir
 
@@ -333,9 +358,10 @@ def ProcessDirArgs(argv, Errors):
 
     if os.listdir(DstDir) != []:
 
-        Errors.append('Error 13: dst dir\n\n{0:s}\n\nmust be empty and it is not\n'.format(str(DstDir)))
+        Errors.append(
+            'Error 13: dst dir\n\n{0:s}\n\nmust be empty and it is not\n'.format(str(DstDir)))
 
-        logging.info (' Exiting ProcessDirArgs dst dir not empty error\n')
+        logging.info(' Exiting ProcessDirArgs dst dir not empty error\n')
 
         return DirProcessing, PrefixDir, Path, File, SrcDir, DstDir
 
@@ -346,162 +372,177 @@ def ProcessDirArgs(argv, Errors):
 
     SplitDir = os.path.split(SrcDir)
 
-    logging.debug  (' ProcessDirArgs: SplitDir %s\n', SplitDir)
+    logging.debug(' ProcessDirArgs: SplitDir %s\n', SplitDir)
 
     if SplitDir[1] == '' or SplitDir[1] == '.' or SplitDir[1] == '..':
 
-        Errors.append('Error 10: There must be a directory that is not \'.\' or \'..\' in the input name for\na fzp file in order to find the svg files.\n')
+        Errors.append(
+            'Error 10: There must be a directory that is not \'.\' or \'..\' in the input name for\na fzp file in order to find the svg files.\n')
 
-        logging.info (' Exiting ProcessDirArgs no prefix dir error\n')
+        logging.info(' Exiting ProcessDirArgs no prefix dir error\n')
 
         return DirProcessing, PrefixDir, Path, File, SrcDir, DstDir
 
     else:
-    
+
         Path = SplitDir[0]
-    
-        PrefixDir =  SplitDir[1]
+
+        PrefixDir = SplitDir[1]
 
         if PrefixDir == None:
 
-            # Insure PrefixDir has a string value for the directory routines. 
+            # Insure PrefixDir has a string value for the directory routines.
 
             PrefixDir = ""
 
         # End of if PrefixDir == None:
 
-        DstFzpDir = os.path.join(DstDir,PrefixDir) 
+        DstFzpDir = os.path.join(DstDir, PrefixDir)
 
-        try:    
+        try:
 
             os.makedirs(DstFzpDir)
 
         except os.error as e:
 
-            Errors.append('Error 14: Creating dir\n\n{0:s} {1:s} \({2:s}\)\n'.format(DstFzpDir), e.strerror, str(e.errno))
+            Errors.append('Error 14: Creating dir\n\n{0:s} {1:s} \({2:s}\)\n'.format(
+                DstFzpDir), e.strerror, str(e.errno))
 
-            logging.info (' Exiting ProcessDirArgs dir on error %s\n',e.strerror)
+            logging.info(
+                ' Exiting ProcessDirArgs dir on error %s\n', e.strerror)
 
             return DirProcessing, PrefixDir, Path, File, SrcDir, DstDir
 
         # End of try:
-    
-        logging.debug (' ProcessDirArgs: mkdir %s\n',DstFzpDir)
-        
+
+        logging.debug(' ProcessDirArgs: mkdir %s\n', DstFzpDir)
+
         # The fzp directory was created so create the base svg directory
-        
+
         DstSvgDir = os.path.join(DstDir, 'svg')
-    
-        try:    
-    
+
+        try:
+
             os.makedirs(DstSvgDir)
 
         except os.error as e:
 
-            Errors.append('Error 14: Creating dir\n\n{0:s} {1:s} \({2:s}\)\n'.format(DstFzpDir), e.strerror, str(e.errno))
+            Errors.append('Error 14: Creating dir\n\n{0:s} {1:s} \({2:s}\)\n'.format(
+                DstFzpDir), e.strerror, str(e.errno))
 
-            logging.info (' Exiting ProcessDirArgs dir on error %s\n',e.strerror)
+            logging.info(
+                ' Exiting ProcessDirArgs dir on error %s\n', e.strerror)
 
             return DirProcessing, PrefixDir, Path, File, SrcDir, DstDir
 
         # End of try:
-    
-        logging.debug (' ProcessDirArgs: mkdir %s\n',DstSvgDir)
-        
+
+        logging.debug(' ProcessDirArgs: mkdir %s\n', DstSvgDir)
+
         DstSvgDir = os.path.join(DstSvgDir, PrefixDir)
-    
-        try:    
-        
+
+        try:
+
             os.makedirs(DstSvgDir)
 
         except os.error as e:
 
-            Errors.append('Error 14: Creating dir\n\n{0:s} {1:s} \({2:s}\)\n'.format(DstFzpDir), e.strerror, str(e.errno))
+            Errors.append('Error 14: Creating dir\n\n{0:s} {1:s} \({2:s}\)\n'.format(
+                DstFzpDir), e.strerror, str(e.errno))
 
-            logging.info (' Exiting ProcessDirArgs dir on error %s\n',e.strerror)
+            logging.info(
+                ' Exiting ProcessDirArgs dir on error %s\n', e.strerror)
 
             return DirProcessing, PrefixDir, Path, File, SrcDir, DstDir
 
         # End of try:
-    
-        logging.debug (' ProcessDirArgs: mkdir %s\n', DstSvgDir)
-        
+
+        logging.debug(' ProcessDirArgs: mkdir %s\n', DstSvgDir)
+
         # then the four svg direcotries
-        
+
         SvgDir = os.path.join(DstSvgDir, 'breadboard')
-    
-        try:    
-        
+
+        try:
+
             os.makedirs(SvgDir)
 
         except os.error as e:
 
-            Errors.append('Error 14: Creating dir\n\n{0:s} {1:s} \({2:s}\)\n'.format(DstFzpDir), e.strerror, str(e.errno))
+            Errors.append('Error 14: Creating dir\n\n{0:s} {1:s} \({2:s}\)\n'.format(
+                DstFzpDir), e.strerror, str(e.errno))
 
-            logging.info (' Exiting ProcessDirArgs dir on error %s\n',e.strerror)
+            logging.info(
+                ' Exiting ProcessDirArgs dir on error %s\n', e.strerror)
 
             return DirProcessing, PrefixDir, Path, File, SrcDir, DstDir
 
         # End of try:
-    
+
         logging.debug(' ProcessDirArgs: mkdir %s\n', SvgDir)
-        
+
         SvgDir = os.path.join(DstSvgDir, 'icon')
-    
-        try:    
-        
+
+        try:
+
             os.makedirs(SvgDir)
 
         except os.error as e:
 
-            Errors.append('Error 14: Creating dir\n\n{0:s} {1:s} \({2:s}\)\n'.format(DstFzpDir), e.strerror, str(e.errno))
+            Errors.append('Error 14: Creating dir\n\n{0:s} {1:s} \({2:s}\)\n'.format(
+                DstFzpDir), e.strerror, str(e.errno))
 
-            logging.info (' Exiting ProcessDirArgs dir on error %s\n',e.strerror)
+            logging.info(
+                ' Exiting ProcessDirArgs dir on error %s\n', e.strerror)
 
             return DirProcessing, PrefixDir, Path, File, SrcDir, DstDir
 
         # End of try:
-    
+
         logging.debug(' ProcessDirArgs: mkdir %s\n', SvgDir)
-        
+
         SvgDir = os.path.join(DstSvgDir, 'pcb')
-    
-        try:    
-        
+
+        try:
+
             os.makedirs(SvgDir)
 
         except os.error as e:
 
-            Errors.append('Error 14: Creating dir\n\n{0:s} {1:s} \({2:s}\)\n'.format(DstFzpDir), e.strerror, str(e.errno))
+            Errors.append('Error 14: Creating dir\n\n{0:s} {1:s} \({2:s}\)\n'.format(
+                DstFzpDir), e.strerror, str(e.errno))
 
-            logging.info (' Exiting ProcessDirArgs dir on error %s\n',e.strerror)
+            logging.info(
+                ' Exiting ProcessDirArgs dir on error %s\n', e.strerror)
 
             return DirProcessing, PrefixDir, Path, File, SrcDir, DstDir
 
         # End of try:
-    
+
         logging.debug(' ProcessDirArgs: mkdir %s\n', SvgDir)
-        
+
         SvgDir = os.path.join(DstSvgDir, 'schematic')
-    
-        try:    
-        
+
+        try:
+
             os.makedirs(SvgDir)
 
         except os.error as e:
 
-            Errors.append('Error, Creating dir {0:s} {1:s} ({2:s})\n'.format(DstFzpDir), e.strerror, str(e.errno))
+            Errors.append('Error, Creating dir {0:s} {1:s} ({2:s})\n'.format(
+                DstFzpDir), e.strerror, str(e.errno))
 
-            logging.info (' Exiting ProcessDirArgs dir on error %s\n',e.strerror)
+            logging.info(
+                ' Exiting ProcessDirArgs dir on error %s\n', e.strerror)
 
             return DirProcessing, PrefixDir, Path, File, SrcDir, DstDir
 
         # End of try:
-    
+
         logging.debug(' ProcessDirArgs: mkdir %s\n', SvgDir)
 
     # End of if SplitDir[1] == '' or SplitDir[1] == '.' or SplitDir[1] == '..':
-        
+
     # If we get here we have a src and dst directory plus all the required new
     # dst directories so return all that to the calling routine. Set
     # DirProcessing  to 'Y' to indicate success.
@@ -509,37 +550,40 @@ def ProcessDirArgs(argv, Errors):
     DirProcessing,  = 'Y'
 
     # Then set FileType to 'dir' from None to not cause a silent error exit
-    # on return. 
+    # on return.
 
     FileType = 'dir'
 
-    logging.debug (' ProcessDirArgs returning DirProcessing %s PrefixDir %s Path %s File %s SrcDir %s DstDir %s\n', DirProcessing, PrefixDir, Path, File, SrcDir, DstDir)
+    logging.debug(' ProcessDirArgs returning DirProcessing %s PrefixDir %s Path %s File %s SrcDir %s DstDir %s\n',
+                  DirProcessing, PrefixDir, Path, File, SrcDir, DstDir)
 
-    logging.info (' Exiting ProcessDirArgs\n')
+    logging.info(' Exiting ProcessDirArgs\n')
 
     return DirProcessing, PrefixDir, Path, File, SrcDir, DstDir
 
 # End of def ProcessDirArgs(Argv, Errors):
+
 
 def PopTag(TagStack, Level):
 
     # Determine from the current level if the value on the tag stack is still
     # in scope. If it is not, then remove the value from the stack.
 
-    logging.info (' Entering PopTag Level %s\n', Level)
+    logging.info(' Entering PopTag Level %s\n', Level)
 
     logging.debug(' PopTag: entry TagStack %s Level %s\n', TagStack, Level)
 
     Tag, StackLevel = TagStack[len(TagStack) - 1]
 
     # Because we may have exited several recusion levels before calling this
-    # delete all the tags below the current level. 
+    # delete all the tags below the current level.
 
     while Level != 0 and StackLevel >= Level:
 
         # Pop the last item from the stack.
 
-        logging.debug(' PopTag: popped Tag %s, StackLevel %s\n', Tag, StackLevel )
+        logging.debug(' PopTag: popped Tag %s, StackLevel %s\n',
+                      Tag, StackLevel)
 
         TagStack.pop(len(TagStack) - 1)
 
@@ -549,13 +593,14 @@ def PopTag(TagStack, Level):
 
     logging.debug(' PopTag: exit TagStack %s Level %s\n', TagStack, Level)
 
-    logging.info (' Exiting PopTag Level %s\n', Level)
+    logging.info(' Exiting PopTag Level %s\n', Level)
 
 # End of def PopTag(Elem, TagStack, Level):
 
+
 def BackupFilename(InFile, Errors):
 
-    logging.info (' Entering BackupFilename\n')
+    logging.info(' Entering BackupFilename\n')
 
     # First set the appropriate output file name None for an error condition.
 
@@ -565,17 +610,18 @@ def BackupFilename(InFile, Errors):
 
         # Then try and rename the input file to InFile.bak
 
-        os.rename (InFile, InFile + '.bak')
+        os.rename(InFile, InFile + '.bak')
 
     except os.error as e:
 
-        Errors.append('Error 15: Can not rename\n\n\'{0:s}\'\n\nto\n\n\'{1:s}\'\n\n\'{2:s}\'\n\n{3:s} ({4:s})\n'.format(str(InFile), str(InFile + '.bak'), str( e.filename), e.strerror, str(e.errno)))
+        Errors.append('Error 15: Can not rename\n\n\'{0:s}\'\n\nto\n\n\'{1:s}\'\n\n\'{2:s}\'\n\n{3:s} ({4:s})\n'.format(
+            str(InFile), str(InFile + '.bak'), str(e.filename), e.strerror, str(e.errno)))
 
         return InFile, OutFile
 
     # End of try:
 
-    # If we get here, then the file was successfully renamed so change the 
+    # If we get here, then the file was successfully renamed so change the
     # filenames and return.
 
     OutFile = InFile
@@ -584,70 +630,82 @@ def BackupFilename(InFile, Errors):
 
     return InFile, OutFile
 
-    logging.info (' Exiting BackupFilename\n')
+    logging.info(' Exiting BackupFilename\n')
 
 # End of def BackupFilename(InFile, Errors):
 
+
 def DupNameError(InFile, Id, Elem, Errors):
 
-    logging.info (' Entering DupNameError:\n')
+    logging.info(' Entering DupNameError:\n')
 
-    logging.debug (' DupNameError: Entry InFile %s Id %s Elem %s Errors %s\n', InFile, Id, Elem, Errors)
+    logging.debug(
+        ' DupNameError: Entry InFile %s Id %s Elem %s Errors %s\n', InFile, Id, Elem, Errors)
 
-    # Log duplicate name error 
+    # Log duplicate name error
 
-    Errors.append('Error 16: File\n\'{0:s}\'\nAt line {1:s}\n\nId {2:s} present more than once (and should be unique)\n'.format(str(InFile), str(Elem.sourceline), str(Id)))
+    Errors.append('Error 16: File\n\'{0:s}\'\nAt line {1:s}\n\nId {2:s} present more than once (and should be unique)\n'.format(
+        str(InFile), str(Elem.sourceline), str(Id)))
 
-    logging.info (' Exiting DupNameError\n')
+    logging.info(' Exiting DupNameError\n')
 
-#End of def DupNameError(InFile, Id, Elem, Errors):
+# End of def DupNameError(InFile, Id, Elem, Errors):
+
 
 def DupNameWarning(InFile, Id, Elem, Warnings):
 
-    logging.info (' Entering DupNameWarning:\n')
+    logging.info(' Entering DupNameWarning:\n')
 
-    logging.debug (' DupNameWarning: Entry InFile %s Id %s Elem %s Errors %s\n', InFile, Id, Elem, Warnings)
+    logging.debug(' DupNameWarning: Entry InFile %s Id %s Elem %s Errors %s\n',
+                  InFile, Id, Elem, Warnings)
 
     # Log duplicate name warning
 
-    Warnings.append('Warning 28: File\n\'{0:s}\'\nAt line {1:s}\n\nname {2:s} present more than once (and should be unique)\n'.format(str(InFile), str(Elem.sourceline), str(Id)))
+    Warnings.append('Warning 28: File\n\'{0:s}\'\nAt line {1:s}\n\nname {2:s} present more than once (and should be unique)\n'.format(
+        str(InFile), str(Elem.sourceline), str(Id)))
 
-    logging.info (' Exiting DupNameWarning\n')
+    logging.info(' Exiting DupNameWarning\n')
 
-#End of def DupNameWarning(InFile, Id, Elem, Warnings):
+# End of def DupNameWarning(InFile, Id, Elem, Warnings):
+
 
 def ProcessTree(FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug, Level=0):
 
-    # Potentially recursively process the element nodes of an lxml tree to 
+    # Potentially recursively process the element nodes of an lxml tree to
     # aquire the information we need to check file integrity. This routine gets
     # called recursively to process child nodes (other routines get called for
-    # leaf node processing). 
+    # leaf node processing).
 
-    logging.info (' Entering ProcessTree FileType %s InFile %s Level %s\n', FileType, InFile, Level)
+    logging.info(
+        ' Entering ProcessTree FileType %s InFile %s Level %s\n', FileType, InFile, Level)
 
-    logging.debug (' **** ProcessTree: Source line %s Elem len %s Level %s\nTag %s\nattributes\n%s\ntext %s\nFzpType %s FileType %s InFile %s OutFile %s CurView %s PrefixDir %s Errors %s Warnings %s Info %s TagStack %s State %s InheritedAttributes %s\n', Elem.sourceline, len(Elem), Level, Elem.tag, Elem.attrib, Elem.text, FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Errors, Warnings, Info, TagStack, State, InheritedAttributes)
-
+    logging.debug(' **** ProcessTree: Source line %s Elem len %s Level %s\nTag %s\nattributes\n%s\ntext %s\nFzpType %s FileType %s InFile %s OutFile %s CurView %s PrefixDir %s Errors %s Warnings %s Info %s TagStack %s State %s InheritedAttributes %s\n',
+                  Elem.sourceline, len(Elem), Level, Elem.tag, Elem.attrib, Elem.text, FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Errors, Warnings, Info, TagStack, State, InheritedAttributes)
 
     # Start by checking for non whitespace charactes in tail (which is likely
-    # an error) and flag the line if present. 
+    # an error) and flag the line if present.
 
     Tail = Elem.tail
 
-    logging.debug (' ProcessTree: Tail = \'%s\'\n', Tail)
+    logging.debug(' ProcessTree: Tail = \'%s\'\n', Tail)
 
-    if Tail != None and not Tail.isspace(): 
+    if Tail != None and not Tail.isspace():
 
-        Warnings.append('Warning 2: File\n\'{0:s}\'\nAt line {1:s}\n\nText \'{2:s}\' isn\'t white space and may cause a problem\n'.format(str(InFile), str(Elem.sourceline), str(Tail)))
-        
-    # End of if not Elem.tail.isspace(): 
+        Warnings.append('Warning 2: File\n\'{0:s}\'\nAt line {1:s}\n\nText \'{2:s}\' isn\'t white space and may cause a problem\n'.format(
+            str(InFile), str(Elem.sourceline), str(Tail)))
+
+    # End of if not Elem.tail.isspace():
 
     if len(Elem):
 
-        logging.debug (' ProcessTree: Procees parent node attributes Source line %s len %s Level %s tag %s\n', Elem.sourceline, len(Elem), Level, Elem.tag)
+        logging.debug(' ProcessTree: Procees parent node attributes Source line %s len %s Level %s tag %s\n',
+                      Elem.sourceline, len(Elem), Level, Elem.tag)
 
-        ProcessLeafNode(FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug, Level)
+        ProcessLeafNode(FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Elem, Errors,
+                        Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug, Level)
 
-        logging.debug (' ProcessTree: Child nodes Source line %s len %s Level %s tag %s\n', Elem.sourceline, len(Elem), Level, Elem.tag)
+        logging.debug(' ProcessTree: Child nodes Source line %s len %s Level %s tag %s\n',
+                      Elem.sourceline, len(Elem), Level, Elem.tag)
 
         # This node has children so recurse down the tree to deal with them.
 
@@ -655,77 +713,89 @@ def ProcessTree(FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Elem, Er
 
             if len(Elem):
 
-                # this node has children so process them (the attributes of 
-                # this node will be processed by the recursion call and the 
-                # level will be increased by one.) 
+                # this node has children so process them (the attributes of
+                # this node will be processed by the recursion call and the
+                # level will be increased by one.)
 
-                ProcessTree(FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug, Level+1)
+                ProcessTree(FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Elem, Errors,
+                            Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug, Level + 1)
 
-            else: # This particular element in the for loop is a leaf node.
+            else:  # This particular element in the for loop is a leaf node.
 
-                # As this is a leaf node proecess it again increasing the 
-                # level by 1 before doing the call. 
+                # As this is a leaf node proecess it again increasing the
+                # level by 1 before doing the call.
 
-                ProcessLeafNode(FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug, Level+1)
+                ProcessLeafNode(FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Elem, Errors,
+                                Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug, Level + 1)
 
             # End of if len(Elem):
 
         # End of for Elem in Elem:
 
     else:
-    
-        # This is a leaf node and thus the level needs to be increased by 1
-        # before we process it.  
 
-        ProcessLeafNode(FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug, Level+1)
+        # This is a leaf node and thus the level needs to be increased by 1
+        # before we process it.
+
+        ProcessLeafNode(FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Elem, Errors,
+                        Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug, Level + 1)
 
     # end of if len(Elem):
 
-    logging.info (' Exiting ProcessTree Level %s\n', Level)
+    logging.info(' Exiting ProcessTree Level %s\n', Level)
 
-# End of def ProcessTree(FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug, Level=0):
+# End of def ProcessTree(FzpType, FileType, InFile, OutFile, CurView,
+# PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State,
+# InheritedAttributes, Debug, Level=0):
+
 
 def ProcessLeafNode(FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug, Level):
 
-    logging.info (' Entering ProcessLeafNode FileType %s Level %s\n', FileType, Level)
+    logging.info(
+        ' Entering ProcessLeafNode FileType %s Level %s\n', FileType, Level)
 
-    logging.debug (' ProcessLeafNode: FzpType %s FileType %s InFile %s CurView %s Errors %s\n', FzpType, FileType, InFile,CurView, Errors)
+    logging.debug(' ProcessLeafNode: FzpType %s FileType %s InFile %s CurView %s Errors %s\n',
+                  FzpType, FileType, InFile, CurView, Errors)
 
     # Start by checking for non whitespace charactes in tail (which is likely
-    # an error) and flag the line if present. 
+    # an error) and flag the line if present.
 
     Tail = Elem.tail
 
-    logging.debug (' ProcessLeafNode: Tail = \'%s\'\n', Tail)
+    logging.debug(' ProcessLeafNode: Tail = \'%s\'\n', Tail)
 
-    if Tail != None and not Tail.isspace(): 
+    if Tail != None and not Tail.isspace():
 
-        Warnings.append('Warning 2: File\n\'{0:s}\'\nAt line {1:s}\n\nText  \'{2:s}\' isn\'t white space and may cause a problem\n'.format(str(InFile), str(Elem.sourceline), str(Tail)))
-        
-    # End of if not Elem.tail.isspace(): 
+        Warnings.append('Warning 2: File\n\'{0:s}\'\nAt line {1:s}\n\nText  \'{2:s}\' isn\'t white space and may cause a problem\n'.format(
+            str(InFile), str(Elem.sourceline), str(Tail)))
+
+    # End of if not Elem.tail.isspace():
 
     # Select the appropriate leaf node processing routing based on the FileType
-    # variable. 
+    # variable.
 
-    if FileType == 'FZPFRITZ' or  FileType == 'FZPPART':
+    if FileType == 'FZPFRITZ' or FileType == 'FZPPART':
 
-        # If this is a fzp file do the leaf node processing for that. 
+        # If this is a fzp file do the leaf node processing for that.
 
-        ProcessFzpLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level)
-        
+        ProcessFzpLeafNode(FzpType, FileType, InFile, CurView, PrefixDir,
+                           Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level)
+
     elif FileType == 'SVG':
 
-        ProcessSvgLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Level)
+        ProcessSvgLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Errors,
+                           Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Level)
 
     else:
 
         if not 'SoftwareError' in State:
 
             # Report the software error once, then set 'SoftwareError' in State
-            # to supress more messages and just return. It won't work right 
-            # but the problem will at least be reported. 
+            # to supress more messages and just return. It won't work right
+            # but the problem will at least be reported.
 
-            Errors.append('Error 19: File\n\'{0:s}\'\n\nFile type {1:s} is an unknown format (software error)\n'.format(str(InFile), str(FileType)))
+            Errors.append('Error 19: File\n\'{0:s}\'\n\nFile type {1:s} is an unknown format (software error)\n'.format(
+                str(InFile), str(FileType)))
 
             State['SoftwareError'] = 'y'
 
@@ -733,59 +803,66 @@ def ProcessLeafNode(FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Elem
 
     # End of if FileType == 'FZPFRITZ' or  FileType == 'FZPPART':
 
-    logging.info (' Exiting ProcessLeafNode Level %s\n', Level)
+    logging.info(' Exiting ProcessLeafNode Level %s\n', Level)
 
-# End of def ProcessLeafNode(FzpType, InFile, OutFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug, Level):
+# End of def ProcessLeafNode(FzpType, InFile, OutFile, CurView, PrefixDir,
+# Elem, Errors, Warnings, Info, FzpDict, TagStack, State,
+# InheritedAttributes, Debug, Level):
+
 
 def ProcessFzp(DirProcessing, FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Errors, Warnings, Info, FzpDict, FilesProcessed, TagStack, State, InheritedAttributes, Debug):
 
-    logging.info (' Entering ProcessFzp FzpType %s FileType %s InFile %s\n', FzpType, FileType, InFile)
+    logging.info(' Entering ProcessFzp FzpType %s FileType %s InFile %s\n',
+                 FzpType, FileType, InFile)
 
-    logging.debug ('  ProcessFzp: FzpType %s FileType %s InFile %s OutFile %s CurView %s PrefixDir %s Errors %s Warnings %s Info %s FzpDict %s TagStack %s State %s InheritedAttributes %s Debug %s\n', FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug)
+    logging.debug('  ProcessFzp: FzpType %s FileType %s InFile %s OutFile %s CurView %s PrefixDir %s Errors %s Warnings %s Info %s FzpDict %s TagStack %s State %s InheritedAttributes %s Debug %s\n',
+                  FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug)
 
     # Parse the input document.
 
-    Doc, Root = PP.ParseFile (InFile, Errors)
+    Doc, Root = PP.ParseFile(InFile, Errors)
 
-    logging.debug (' ProcessFzp: return from parse Doc %s\n', Doc)
+    logging.debug(' ProcessFzp: return from parse Doc %s\n', Doc)
 
     if Doc != None:
 
         # We have successfully parsed the input document so process it. Since
         # We don't yet have a CurView, set it to None.
 
-        logging.debug (' ProcessFzp: Calling ProceesTree Doc %s\n', Doc)
+        logging.debug(' ProcessFzp: Calling ProceesTree Doc %s\n', Doc)
 
-        # Set the local output file to a value in case we don't use it but 
-        # do test it. 
+        # Set the local output file to a value in case we don't use it but
+        # do test it.
 
         FQOutFile = None
 
         if OutFile == None:
 
             if Debug == 0:
-    
+
                 # No output file indicates we are processing a single fzp file
                 # so rename the src file to .bak and use the original src file
                 # as the output file (assuming the rename is successfull).
                 # Use FQOutFile as the new file name to preserve the value
-                # of OutFile for svg processing later. 
-    
+                # of OutFile for svg processing later.
+
                 InFile, FQOutFile = BackupFilename(InFile, Errors)
-    
-                logging.debug (' ProcessFzp: After BackupFilename(InFile, Errors) InFile %s FQOutFile %s\n', InFile, FQOutFile)
-    
+
+                logging.debug(
+                    ' ProcessFzp: After BackupFilename(InFile, Errors) InFile %s FQOutFile %s\n', InFile, FQOutFile)
+
                 if FQOutFile == None:
-    
+
                     # An error occurred, so just return to indicate that without
                     # writing the file (as there is no where to write it to).
-    
-                    logging.info (' ProcessFzp: Exiting ProcessFzp after rename error\n')
-    
+
+                    logging.info(
+                        ' ProcessFzp: Exiting ProcessFzp after rename error\n')
+
                     return
-    
+
                 # End of if FQOutFile == None:
-    
+
             # End of if Debug == 0:
 
         else:
@@ -799,68 +876,80 @@ def ProcessFzp(DirProcessing, FzpType, FileType, InFile, OutFile, CurView, Prefi
         # Now that we have an appropriate input file name, process the tree.
         # (we won't get here if there is a file rename error above!)
 
-        logging.debug (' ProcessFzp: before ProcessTree FileType %s FQOutFile %s\n', FileType, FQOutFile)
+        logging.debug(
+            ' ProcessFzp: before ProcessTree FileType %s FQOutFile %s\n', FileType, FQOutFile)
 
-        ProcessTree(FzpType, FileType, InFile, FQOutFile, None, PrefixDir, Root, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug)
+        ProcessTree(FzpType, FileType, InFile, FQOutFile, None, PrefixDir, Root, Errors,
+                    Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug)
 
-        logging.debug (' ProcessFzp: After ProcessTree FileType %s FQOutFile %s\n', FileType, FQOutFile)
+        logging.debug(
+            ' ProcessFzp: After ProcessTree FileType %s FQOutFile %s\n', FileType, FQOutFile)
 
         # We are at the end of processing the fzp file so check that the
         # connector numbers are contiguous.
 
-        FzpCheckConnectors(InFile, Root, FzpDict, Errors, Warnings, Info, State)        
-        # We have an output file name so write the fzp file to it (or the 
+        FzpCheckConnectors(InFile, Root, FzpDict,
+                           Errors, Warnings, Info, State)
+        # We have an output file name so write the fzp file to it (or the
         # console if Debug is > 0.)
 
-        logging.debug (' ProcessFzp: Prettyprint FQOutFile %s FileType %s\n', FQOutFile, FileType)
+        logging.debug(
+            ' ProcessFzp: Prettyprint FQOutFile %s FileType %s\n', FQOutFile, FileType)
 
-        PP.OutputTree(Doc, Root, FileType, InFile, FQOutFile, Errors, Warnings, Info, Debug)
+        PP.OutputTree(Doc, Root, FileType, InFile, FQOutFile,
+                      Errors, Warnings, Info, Debug)
 
         # Then process the associatted svg files from the fzp.
 
-        logging.debug (' ProcessFzp: Calling ProcessSvgsFromFzp DirProcessing %s FzpType %s FileType %s InFile %s OutFile %s PrefixDir %s Errors %s Warnings %s Info %s FzpDict %s Debug %s\n', DirProcessing, FzpType, FileType, InFile, OutFile, PrefixDir, Errors, Warnings, Info, FzpDict, Debug)
+        logging.debug(' ProcessFzp: Calling ProcessSvgsFromFzp DirProcessing %s FzpType %s FileType %s InFile %s OutFile %s PrefixDir %s Errors %s Warnings %s Info %s FzpDict %s Debug %s\n',
+                      DirProcessing, FzpType, FileType, InFile, OutFile, PrefixDir, Errors, Warnings, Info, FzpDict, Debug)
 
+        # Use the original value of OutFile to process the svgs.
 
-        # Use the original value of OutFile to process the svgs. 
-
-        ProcessSvgsFromFzp(DirProcessing, FzpType, FileType, InFile, OutFile, PrefixDir, Errors, Warnings, Info, FzpDict, FilesProcessed, Debug)
+        ProcessSvgsFromFzp(DirProcessing, FzpType, FileType, InFile, OutFile,
+                           PrefixDir, Errors, Warnings, Info, FzpDict, FilesProcessed, Debug)
 
     # End of if Doc != None:
-    
-    logging.info (' Exiting ProcessFzp\n')
 
-# End of def ProcessFzp(DirProcessing, FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Errors, Warnings, Info, FzpDict, FilesProcessed, TagStack, State, InheritedAttributes, Debug):
+    logging.info(' Exiting ProcessFzp\n')
+
+# End of def ProcessFzp(DirProcessing, FzpType, FileType, InFile, OutFile,
+# CurView, PrefixDir, Errors, Warnings, Info, FzpDict, FilesProcessed,
+# TagStack, State, InheritedAttributes, Debug):
+
 
 def ProcessSvgsFromFzp(DirProcessing, FzpType, FileType, InFile, OutFile, PrefixDir, Errors, Warnings, Info, FzpDict, FilesProcessed, Debug):
 
     # Process the svg files referenced in the FzpDict created from a Fritzing
     # .fzp file.
 
-    logging.info (' Entering ProcessSvgsFromFzp DirProcessing %s FzpType %s FileType %s InFile %s\n', DirProcessing,  FzpType, FileType, InFile)
+    logging.info(' Entering ProcessSvgsFromFzp DirProcessing %s FzpType %s FileType %s InFile %s\n',
+                 DirProcessing,  FzpType, FileType, InFile)
 
-    logging.debug (' ProcessSvgsFromFzp: OutFile %s PrefixDir %s FzpDict %s\n', OutFile, PrefixDir, FzpDict)
+    logging.debug(' ProcessSvgsFromFzp: OutFile %s PrefixDir %s FzpDict %s\n',
+                  OutFile, PrefixDir, FzpDict)
 
-    # First we need to determine the directory structure / filename for the 
-    # svg files as there are several to choose from: uncompressed parts which 
-    # are all in the same directory but with odd prefixes of 
-    # svg.layer.filename or in a Fritzing directory which will be 
+    # First we need to determine the directory structure / filename for the
+    # svg files as there are several to choose from: uncompressed parts which
+    # are all in the same directory but with odd prefixes of
+    # svg.layer.filename or in a Fritzing directory which will be
     # ../svg/PrefixDir/layername/filename in 4 different directories. In
     # addition we may be processing a single fzp file (in which case the input
     # file needs a '.bak' appended to it), or directory of fzp files in which
-    # case the '.bak' isn't needed. We will form appropriate file names from 
-    # the InFile, OutFile and PrefixDir arguments to feed to the svg 
-    # processing routine. 
+    # case the '.bak' isn't needed. We will form appropriate file names from
+    # the InFile, OutFile and PrefixDir arguments to feed to the svg
+    # processing routine.
 
     # Insure FQOutFile has a value
 
     FQOutFile = None
 
-    # Get the path from the input and output files (which will be the fzp file 
-    # at this point.) 
+    # Get the path from the input and output files (which will be the fzp file
+    # at this point.)
 
     InPath = os.path.dirname(InFile)
 
-    # Record in FilesProcessed that we have processed this file name in case 
+    # Record in FilesProcessed that we have processed this file name in case
     # this is a directory operation. Get just the file name.
 
     BaseFile = os.path.basename(InFile)
@@ -869,81 +958,89 @@ def ProcessSvgsFromFzp(DirProcessing, FzpType, FileType, InFile, OutFile, Prefix
 
         # If we have already processed it, flag an error (should not occur).
 
-        logging.debug (' ProcessSvgsFromFzp: InFile %s Error 87 issued\n', InFile)
+        logging.debug(
+            ' ProcessSvgsFromFzp: InFile %s Error 87 issued\n', InFile)
 
-        Errors.append('Error 87: File\n\'{0:s}\'\n\nFile has already been processed (software error)\n'.format(str(InFile)))
+        Errors.append(
+            'Error 87: File\n\'{0:s}\'\n\nFile has already been processed (software error)\n'.format(str(InFile)))
 
-        logging.info (' Exiting ProcessSvgsFromFzp on already processed error\n')
+        logging.info(
+            ' Exiting ProcessSvgsFromFzp on already processed error\n')
 
         return
-        
+
     else:
 
-        # Mark that we have processed this file. 
+        # Mark that we have processed this file.
 
         FilesProcessed['processed.' + InFile] = 'y'
 
-        logging.debug (' ProcessSvgsFromFzp: InFile %s marked as processed\n', InFile)
+        logging.debug(
+            ' ProcessSvgsFromFzp: InFile %s marked as processed\n', InFile)
 
     # End of if 'processed.' + InFile in FilesProcessed:
 
-    logging.debug (' ProcessSvgsFromFzp: InPath %s InFile %s', InPath, InFile)
+    logging.debug(' ProcessSvgsFromFzp: InPath %s InFile %s', InPath, InFile)
 
     if OutFile == None:
 
         OutPath = ''
 
-        logging.debug (' ProcessSvgsFromFzp: OutPath %s OutFile %s', OutPath, OutFile)
+        logging.debug(
+            ' ProcessSvgsFromFzp: OutPath %s OutFile %s', OutPath, OutFile)
 
     else:
 
         OutPath = os.path.dirname(OutFile)
 
-        logging.debug (' ProcessSvgsFromFzp: OutPath %s OutFile %s', OutPath, OutFile)
+        logging.debug(
+            ' ProcessSvgsFromFzp: OutPath %s OutFile %s', OutPath, OutFile)
 
     # End of if OutFile == None:
 
     for CurView in FzpDict['views']:
 
-        logging.debug (' ProcessSvgsFromFzp: Process View %s FileType %s FzpDict[views] %s\n', CurView, FileType, FzpDict['views'])
+        logging.debug(
+            ' ProcessSvgsFromFzp: Process View %s FileType %s FzpDict[views] %s\n', CurView, FileType, FzpDict['views'])
 
         # Extract just the image name as a string from the list entry.
 
         Image = ''.join(FzpDict[CurView + '.image'])
 
-        logging.debug (' ProcessSvgsFromFzp 1: CurView %s Image %s FzpType %s FileType %s OutFile %s\n', CurView, Image, FzpType, FileType, OutFile)
+        logging.debug(' ProcessSvgsFromFzp 1: CurView %s Image %s FzpType %s FileType %s OutFile %s\n',
+                      CurView, Image, FzpType, FileType, OutFile)
 
-        # indicate we haven't seen an output file rename error. 
+        # indicate we haven't seen an output file rename error.
 
         OutFileError = 'n'
 
         if FzpType == 'FZPPART':
 
-            # The svg is of the form svg.layer.filename in the directory 
-            # pointed to by Path. So append a svg. to the file name and 
-            # convert the '/' to a '.' to form the file name for processing. 
+            # The svg is of the form svg.layer.filename in the directory
+            # pointed to by Path. So append a svg. to the file name and
+            # convert the '/' to a '.' to form the file name for processing.
 
             Image = Image.replace(r"/", ".")
 
             if OutFile == None:
 
-                # Single file processing so set the output filename and use 
-                # FQOutFile.bak as the input. Again preserve the original 
-                # value of OutFile for processing later svg files. 
+                # Single file processing so set the output filename and use
+                # FQOutFile.bak as the input. Again preserve the original
+                # value of OutFile for processing later svg files.
 
                 Image = Image.replace(r"/", ".")
 
                 FQOutFile = os.path.join(InPath, 'svg.' + Image)
 
                 # Set the input file from the output file in case debug is non
-                # zero and we don't set a backup file. 
+                # zero and we don't set a backup file.
 
                 FQInFile = FQOutFile
 
                 if Debug == 0:
 
                     # If Debug isn't set then rename the input file and
-                    # change the input file name. Otherwise leave it alone 
+                    # change the input file name. Otherwise leave it alone
                     # (in this case OutFile is unused and output goes to the
                     # console for debugging.)
 
@@ -952,15 +1049,16 @@ def ProcessSvgsFromFzp(DirProcessing, FzpType, FileType, InFile, OutFile, Prefix
                     if FQOutFile == None:
 
                         # an error occurred renaming the input file so set an
-                        # an OutFileError so we don't try and process this 
-                        # file as we have no valid output file to write it to. 
+                        # an OutFileError so we don't try and process this
+                        # file as we have no valid output file to write it to.
 
                         OutFileError = 'n'
 
                     # End of if FQOutFile == None:
 
-                    logging.debug (' ProcessSvgsFromFzp 2: FQInFile %s FQOutFile %s OutFileError %s\n', FQInFile, FQOutFile, OutFileError)
-                    
+                    logging.debug(
+                        ' ProcessSvgsFromFzp 2: FQInFile %s FQOutFile %s OutFileError %s\n', FQInFile, FQOutFile, OutFileError)
+
                 # End of if Debug == 0:
 
             else:
@@ -976,25 +1074,28 @@ def ProcessSvgsFromFzp(DirProcessing, FzpType, FileType, InFile, OutFile, Prefix
 
         elif FzpType == 'FZPFRITZ':
 
-            # The svg is of the form path../svg/PrefixDir/layername/filename, 
-            # so prepend the appropriate path and use that as the file name. 
+            # The svg is of the form path../svg/PrefixDir/layername/filename,
+            # so prepend the appropriate path and use that as the file name.
 
-            # First create the new end path as NewFile 
+            # First create the new end path as NewFile
             # (i.e. '../svg/PrefixDir/Image') once, ready to append as needed.
 
             NewFile = '..'
 
             NewFile = os.path.join(NewFile, 'svg')
 
-            logging.debug (' ProcessSvgsFromFzp: after add svg NewFile %s PrefixDir %s\n', NewFile, PrefixDir)
+            logging.debug(
+                ' ProcessSvgsFromFzp: after add svg NewFile %s PrefixDir %s\n', NewFile, PrefixDir)
 
             NewFile = os.path.join(NewFile, PrefixDir)
 
-            logging.debug (' ProcessSvgsFromFzp: after add  PrefixDir NewFile %s\n', NewFile)
+            logging.debug(
+                ' ProcessSvgsFromFzp: after add  PrefixDir NewFile %s\n', NewFile)
 
             NewFile = os.path.join(NewFile, Image)
 
-            logging.debug (' ProcessSvgsFromFzp: after add  Image NewFile %s\n', NewFile)
+            logging.debug(
+                ' ProcessSvgsFromFzp: after add  Image NewFile %s\n', NewFile)
 
             # add the new end path to the end of the source path
 
@@ -1005,19 +1106,20 @@ def ProcessSvgsFromFzp(DirProcessing, FzpType, FileType, InFile, OutFile, Prefix
                 if Debug == 0:
 
                     # If Debug isn't set then rename the input file and
-                    # change the input file name. Otherwise leave it alone 
+                    # change the input file name. Otherwise leave it alone
                     # (in this case OutFile is unused and output goes to the
                     # console for debugging.)
 
                     FQInFile, FQOutFile = BackupFilename(FQInFile, Errors)
 
-                    logging.debug (' ProcessSvgsFromFzp: after rename FQInfile %s FQOutFile %s\n', FQInFile, FQOutFile)
+                    logging.debug(
+                        ' ProcessSvgsFromFzp: after rename FQInfile %s FQOutFile %s\n', FQInFile, FQOutFile)
 
                     if FQOutFile == None:
 
                         # an error occurred renaming the input file so set an
-                        # an OutFileError so we don't try and process this 
-                        # file as we have no valid output file to write it to. 
+                        # an OutFileError so we don't try and process this
+                        # file as we have no valid output file to write it to.
 
                         OutFileError = 'y'
 
@@ -1033,12 +1135,11 @@ def ProcessSvgsFromFzp(DirProcessing, FzpType, FileType, InFile, OutFile, Prefix
 
             else:
 
-                # dir to dir processing 
+                # dir to dir processing
 
                 FQInFile = os.path.join(InPath, NewFile)
 
                 FQOutFile = os.path.join(OutPath, NewFile)
-
 
             # End of if OutFile == None:
 
@@ -1046,7 +1147,8 @@ def ProcessSvgsFromFzp(DirProcessing, FzpType, FileType, InFile, OutFile, Prefix
 
             # Software error! Shouldn't ever get here.
 
-            Errors.append('Error 19: File\n\'{0:s}\'\n\nFile type {1:s} is an unknown format (software error)\n'.format(str(InFile), str(FzpType)))
+            Errors.append('Error 19: File\n\'{0:s}\'\n\nFile type {1:s} is an unknown format (software error)\n'.format(
+                str(InFile), str(FzpType)))
 
             # Don't try and process further as will likely crash due to unset
             # variables.
@@ -1055,13 +1157,15 @@ def ProcessSvgsFromFzp(DirProcessing, FzpType, FileType, InFile, OutFile, Prefix
 
         # End of if FzpType == 'FZPPART':
 
-        logging.debug (' ProcessSvgsFromFzp: FileType %s Process %s to %s\n', FileType, FQInFile, FQOutFile)
+        logging.debug(' ProcessSvgsFromFzp: FileType %s Process %s to %s\n',
+                      FileType, FQInFile, FQOutFile)
 
         if not os.path.isfile(FQInFile):
 
             # The file doesn't exist so flag an error,
 
-            Errors.append('Error 20: File\n\'{0:s}\'\n\nDuring processing svgs from fzp, svg file doesn\'t exist\n'.format(str(FQInFile)))
+            Errors.append(
+                'Error 20: File\n\'{0:s}\'\n\nDuring processing svgs from fzp, svg file doesn\'t exist\n'.format(str(FQInFile)))
 
         else:
 
@@ -1074,7 +1178,8 @@ def ProcessSvgsFromFzp(DirProcessing, FzpType, FileType, InFile, OutFile, Prefix
 
             # get the path from the input file
 
-            logging.debug(' ProcessSvgsFromFzp: TmpPath %s TmpFile %s\n', TmpPath, TmpFile)
+            logging.debug(
+                ' ProcessSvgsFromFzp: TmpPath %s TmpFile %s\n', TmpPath, TmpFile)
 
             if TmpPath == '':
 
@@ -1086,24 +1191,28 @@ def ProcessSvgsFromFzp(DirProcessing, FzpType, FileType, InFile, OutFile, Prefix
 
             if not TmpFile in os.listdir(TmpPath):
 
-                logging.debug(' ProcessSvgsFromFzp: dir names %s\n', os.listdir(TmpPath))
+                logging.debug(
+                    ' ProcessSvgsFromFzp: dir names %s\n', os.listdir(TmpPath))
 
-                # File system case mismatch error. 
+                # File system case mismatch error.
 
-                logging.debug(' ProcessSvgsFromFzp: InFile %s OutFile %s FzpType %s \n', InFile, OutFile, FzpType)
+                logging.debug(
+                    ' ProcessSvgsFromFzp: InFile %s OutFile %s FzpType %s \n', InFile, OutFile, FzpType)
 
                 if OutFile == None or DirProcessing == 'Y':
 
                     # Then InFile is the fzp file.
 
-                    Errors.append('Error 21: Svg file\n\n\'{0:s}\'\n\nHas a different case in the file system than in the fzp file\n\n\'{1:s}\'\n'.format(str(FQInFile), str(InFile)))
+                    Errors.append('Error 21: Svg file\n\n\'{0:s}\'\n\nHas a different case in the file system than in the fzp file\n\n\'{1:s}\'\n'.format(
+                        str(FQInFile), str(InFile)))
 
                 else:
 
-                    # Then OutFile is the fzp file (InFile will have .bak 
+                    # Then OutFile is the fzp file (InFile will have .bak
                     # appended which we don't want.)
 
-                    Errors.append('Error 21: Svg file\n\n\'{0:s}\'\n\nHas a different case in the file system than in the fzp file\n\n\'{1:s}\'\n'.format(str(FQInFile), str(OutFile)))
+                    Errors.append('Error 21: Svg file\n\n\'{0:s}\'\n\nHas a different case in the file system than in the fzp file\n\n\'{1:s}\'\n'.format(
+                        str(FQInFile), str(OutFile)))
 
                 # End of if OutFile == None or DirProcessing == 'Y':
 
@@ -1113,9 +1222,9 @@ def ProcessSvgsFromFzp(DirProcessing, FzpType, FileType, InFile, OutFile, Prefix
 
                 if CurView == 'iconView':
 
-                    # If this is iconview, don't do processing as we aren't 
-                    # going to check anything and sometimes the breadboard 
-                    # svg is reused which will cause a warning and replace 
+                    # If this is iconview, don't do processing as we aren't
+                    # going to check anything and sometimes the breadboard
+                    # svg is reused which will cause a warning and replace
                     # the .bak file (which is undesirable). We do however
                     # want to have the output file even though we didn't
                     # do anything to it, so do copy the infile to the outfile
@@ -1124,118 +1233,139 @@ def ProcessSvgsFromFzp(DirProcessing, FzpType, FileType, InFile, OutFile, Prefix
 
                     if FQOutFile != None and Debug == 0:
 
-                        # If Debug isn't 0, the file names are the same and 
-                        # will cause an exception during the copy. 
+                        # If Debug isn't 0, the file names are the same and
+                        # will cause an exception during the copy.
 
                         copyfile(FQInFile, FQOutFile)
 
                     # End of if FQOutFile != None:
 
-                    logging.debug (' ProcessSvgsFromFzp: Process View %s skipping iconview\n', CurView)
+                    logging.debug(
+                        ' ProcessSvgsFromFzp: Process View %s skipping iconview\n', CurView)
 
                     continue
 
                 # End of if CurView == 'iconview':
 
-                # Mark that we have processed this file in case this is 
-                # directory processing of part.files to avoid double 
+                # Mark that we have processed this file in case this is
+                # directory processing of part.files to avoid double
                 # processing the svg files.
 
                 if 'processed.' + FQInFile in FilesProcessed:
 
-                    # Already seen, may occur if svgs are shared, so warn as 
-                    # the .bak file will be overwritten and the user needs to 
-                    # know that 
+                    # Already seen, may occur if svgs are shared, so warn as
+                    # the .bak file will be overwritten and the user needs to
+                    # know that
 
-                    logging.debug(' ProcessSvgsFromFzp: FQInFile %s Warning 29 issued. FilesProcessed %s\n', FQInFile, FilesProcessed)
+                    logging.debug(
+                        ' ProcessSvgsFromFzp: FQInFile %s Warning 29 issued. FilesProcessed %s\n', FQInFile, FilesProcessed)
 
-                    Warnings.append('Warning 29: File\n\'{0:s}\'\n\nProcessing view {1:s}, File {2:s}\nhas already been processed\nbut will be processed again as part of this fzp file in case of new warnings.\n'.format(str(InFile), str(CurView), str(FQInFile)))
+                    Warnings.append('Warning 29: File\n\'{0:s}\'\n\nProcessing view {1:s}, File {2:s}\nhas already been processed\nbut will be processed again as part of this fzp file in case of new warnings.\n'.format(
+                        str(InFile), str(CurView), str(FQInFile)))
 
                 else:
 
-                    logging.debug(' ProcessSvgsFromFzp: FQInFile %s marked as processed.\n', FQInFile)
+                    logging.debug(
+                        ' ProcessSvgsFromFzp: FQInFile %s marked as processed.\n', FQInFile)
 
                     FilesProcessed['processed.' + FQInFile] = 'y'
 
                 # End of if 'processed.' + FQInFile in FilesProcessed:
 
                 # If the file exists and there was not a file rename error then
-                # go and try and process the svg (set the FileType explicitly 
-                # to svg), but first reset the state variables for the new 
+                # go and try and process the svg (set the FileType explicitly
+                # to svg), but first reset the state variables for the new
                 # file (but not Errors, Warnings, FzpDict or CurView).
 
                 TagStack, State, InheritedAttributes = InitializeState()
 
-                ProcessSvg(FzpType, 'SVG', FQInFile, FQOutFile, CurView, PrefixDir,  Errors, Warnings, Info, FzpDict, FilesProcessed, TagStack, State, InheritedAttributes, Debug)
+                ProcessSvg(FzpType, 'SVG', FQInFile, FQOutFile, CurView, PrefixDir,  Errors, Warnings,
+                           Info, FzpDict, FilesProcessed, TagStack, State, InheritedAttributes, Debug)
 
-                # We are finished processing this file from an fzp, and it 
+                # We are finished processing this file from an fzp, and it
                 # isn't the icon file (which doesn't have connectors) because
-                # that was caught above, so check the connectors on this svg 
+                # that was caught above, so check the connectors on this svg
                 # file to make sure they are all present.
 
-                logging.debug  (' ProcessSvgsFromFzp: Checking connectors for %s\n', InFile)
+                logging.debug(
+                    ' ProcessSvgsFromFzp: Checking connectors for %s\n', InFile)
 
                 for Connector in FzpDict['connectors.fzp.' + CurView]:
 
-                    # Check that the connector is in the svg and error if not. 
+                    # Check that the connector is in the svg and error if not.
 
-                    logging.debug  (' ProcessSvgsFromFzp: Checking connector %s\n', Connector)
+                    logging.debug(
+                        ' ProcessSvgsFromFzp: Checking connector %s\n', Connector)
 
                     if not 'connectors.svg.' + CurView in FzpDict:
 
-                        Errors.append('Error 17: File\n\'{0:s}\'\n\nNo connectors found for view {1:s}.\n'.format(str(InFile), str(CurView)))
+                        Errors.append('Error 17: File\n\'{0:s}\'\n\nNo connectors found for view {1:s}.\n'.format(
+                            str(InFile), str(CurView)))
 
                     elif not Connector in FzpDict['connectors.svg.' + CurView]:
 
-                        logging.debug  (' ProcessSvgsFromFzp: Connector %s missing\n', Connector)
+                        logging.debug(
+                            ' ProcessSvgsFromFzp: Connector %s missing\n', Connector)
 
-                        Errors.append('Error 18: File\n\'{0:s}\'\n\nConnector {1:s} is in the fzp file but not the svg file. (typo?)\n\nsvg {2:s}\n'.format(str(InFile), str(Connector), str(FQInFile)))
+                        Errors.append('Error 18: File\n\'{0:s}\'\n\nConnector {1:s} is in the fzp file but not the svg file. (typo?)\n\nsvg {2:s}\n'.format(
+                            str(InFile), str(Connector), str(FQInFile)))
 
                     # End of if not 'connectors.svg.' + CurView in FzpDict:
-                
-                # End of `for Connector in FzpDict['connectors.fzp.' + CurView]:
+
+                # End of `for Connector in FzpDict['connectors.fzp.' +
+                # CurView]:
 
                 if CurView == 'schematicView' and 'subparts' in FzpDict:
 
                     # We have subparts, so now having processed the entire svg
-                    # make sure we have found all the connectors we should have.
+                    # make sure we have found all the connectors we should
+                    # have.
 
-                    logging.debug(' ProcessSvgsFromFzp: Subpart start FzpDict[\'subparts\'] %s\n',FzpDict['subparts'])
+                    logging.debug(
+                        ' ProcessSvgsFromFzp: Subpart start FzpDict[\'subparts\'] %s\n', FzpDict['subparts'])
 
                     for SubPart in FzpDict['subparts']:
 
                         # Get the list of subparts from the fzp.
 
-                        logging.debug(' ProcessSvgsFromFzp: Subpart before loop SubPart=%s\nFzpDict[SubPart + \'.subpart.cons\']=%s\nFzpDict[SubPart + \'.svg.subparts\']=%s\n',SubPart, FzpDict[SubPart + '.subpart.cons'], FzpDict[SubPart + '.svg.subparts'])
+                        logging.debug(' ProcessSvgsFromFzp: Subpart before loop SubPart=%s\nFzpDict[SubPart + \'.subpart.cons\']=%s\nFzpDict[SubPart + \'.svg.subparts\']=%s\n', SubPart, FzpDict[
+                                      SubPart + '.subpart.cons'], FzpDict[SubPart + '.svg.subparts'])
 
                         for SubpartConnector in FzpDict[SubPart + '.subpart.cons']:
 
-                            logging.debug(' ProcessSvgsFromFzp: SubpartConnector %s\n',SubpartConnector)
+                            logging.debug(
+                                ' ProcessSvgsFromFzp: SubpartConnector %s\n', SubpartConnector)
 
                             if not SubPart + '.svg.subparts' in FzpDict:
 
-                                # No connectors in svg error. 
+                                # No connectors in svg error.
 
-                                logging.debug(' ProcessSvgsFromFzp: no connectors in svg, SubpartConnector %s\n',SubPartConnector, SubPart)
+                                logging.debug(
+                                    ' ProcessSvgsFromFzp: no connectors in svg, SubpartConnector %s\n', SubPartConnector, SubPart)
 
-                                Errors.append('Error 78: Svg file\n\n\'{0:s}\'\n\nWhile looking for {1:s}, Subpart {2:s} has no connectors in the svg\n'.format(str(FQInFile), str(OutFile), str(SubpartConnector), str(SubPart)))
+                                Errors.append('Error 78: Svg file\n\n\'{0:s}\'\n\nWhile looking for {1:s}, Subpart {2:s} has no connectors in the svg\n'.format(
+                                    str(FQInFile), str(OutFile), str(SubpartConnector), str(SubPart)))
 
                             elif not SubpartConnector in FzpDict[SubPart + '.svg.subparts']:
 
-                                # Throw an error if one of the connectors we 
-                                # should have isn't in the svg. 
+                                # Throw an error if one of the connectors we
+                                # should have isn't in the svg.
 
-                                Errors.append('Error 79: Svg file\n\n\'{0:s}\'\n\nSubpart {1:s} is missing connector {2:s} in the svg\n'.format(str(FQInFile), str(SubPart), str(SubpartConnector)))
+                                Errors.append('Error 79: Svg file\n\n\'{0:s}\'\n\nSubpart {1:s} is missing connector {2:s} in the svg\n'.format(
+                                    str(FQInFile), str(SubPart), str(SubpartConnector)))
 
-                                logging.debug(' ProcessSvgsFromFzp: Error 79: no connector %s in svg, SubpartConnector %s\n',SubpartConnector, SubPart)
+                                logging.debug(
+                                    ' ProcessSvgsFromFzp: Error 79: no connector %s in svg, SubpartConnector %s\n', SubpartConnector, SubPart)
 
                             # if not SubPart + '.svg.subparts' in FzpDict:
 
-                        # End of for SubpartConnector in FzpDict[SubPart + '.subpart.cons']:
+                        # End of for SubpartConnector in FzpDict[SubPart +
+                        # '.subpart.cons']:
 
                     # End of for SubPart in FzpDict['subparts']:
 
-                # End of if CurView == 'schematicView' and 'subparts' in FzpDict:
+                # End of if CurView == 'schematicView' and 'subparts' in
+                # FzpDict:
 
             # End of if OutFileError == 'n':
 
@@ -1243,26 +1373,29 @@ def ProcessSvgsFromFzp(DirProcessing, FzpType, FileType, InFile, OutFile, Prefix
 
     # End of for CurView in FzpDict['views']:
 
-    logging.info (' Exiting ProcessSvgsFromFzp\n')
+    logging.info(' Exiting ProcessSvgsFromFzp\n')
 
-#End of def ProcessSvgsFromFzp(FzpType, FileType, InFile, OutFile, PrefixDir, Errors, Warnings, Info, FzpDict, FilesProcessed, Debug):
+# End of def ProcessSvgsFromFzp(FzpType, FileType, InFile, OutFile,
+# PrefixDir, Errors, Warnings, Info, FzpDict, FilesProcessed, Debug):
+
 
 def ProcessFzpLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
 
-    # We are processing an fzp file so do the appropiate things for that. 
+    # We are processing an fzp file so do the appropiate things for that.
 
-    logging.info (' Entering ProcessFzpLeafNode FileType %s Infile %s Level %s\n', FzpType, InFile, Level)
+    logging.info(
+        ' Entering ProcessFzpLeafNode FileType %s Infile %s Level %s\n', FzpType, InFile, Level)
 
     # Regex to detect comment lines (ignoring case)
 
-    CommentRegex = re.compile(r'^<cyfunction Comment at',re.IGNORECASE)
+    CommentRegex = re.compile(r'^<cyfunction Comment at', re.IGNORECASE)
 
-    # Mark in the dictionary that we have processed the fzp file so when we 
+    # Mark in the dictionary that we have processed the fzp file so when we
     # process an associated svg we know if the fzp data is present in the dict.
 
     if not 'fzp' in FzpDict:
 
-        # not here yet so set it. 
+        # not here yet so set it.
 
         FzpDict['fzp'] = 'y'
 
@@ -1273,41 +1406,45 @@ def ProcessFzpLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Erro
     FzpTags(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, Level)
 
     StackTag, StackLevel = TagStack[len(TagStack) - 1]
- 
-    logging.debug (' ProcessFzpLeafNode StackTag %s StackLevel %s\n', StackTag, StackLevel)
+
+    logging.debug(' ProcessFzpLeafNode StackTag %s StackLevel %s\n',
+                  StackTag, StackLevel)
 
     if len(TagStack) == 2 and StackTag == 'module':
 
         Tag = Elem.tag
 
-        logging.debug (' ProcessFzpLeafNode Tag %s\n', Tag)
+        logging.debug(' ProcessFzpLeafNode Tag %s\n', Tag)
 
         if CommentRegex.match(str(Tag)):
 
             # Ignore comment lines so as to not complain about lack of tags.
 
-            logging.debug (' ProcessFzpLeafNode Comment ignored\n ')
+            logging.debug(' ProcessFzpLeafNode Comment ignored\n ')
 
             return
 
         # End of if CommentRegex.match(str(Tag)):
- 
-        logging.debug (' ProcessFzpLeafNode moduleid TagStack %s len %s',TagStack, len(TagStack))
+
+        logging.debug(
+            ' ProcessFzpLeafNode moduleid TagStack %s len %s', TagStack, len(TagStack))
 
         # If the tag stack is only 'module' check for a moduleid if this
         # is a dup that will be caught in FzpmoduleId via the dictionary.
 
-        FzpmoduleId(FzpType, InFile, Elem, Errors, Warnings, Info, FzpDict, State, Level)
-   
+        FzpmoduleId(FzpType, InFile, Elem, Errors,
+                    Warnings, Info, FzpDict, State, Level)
+
         # Set where we are and what we expect to see next.
- 
+
         State['lasttag'] = 'module'
 
         State['nexttag'] = 'views'
 
     elif len(TagStack) == 2:
 
-        Errors.append('Error 22: File\n\'{0:s}\'\n\nAt line {1:s}\n\nNo ModuleId found in fzp file\n'.format(str(InFile), str(Elem.sourceline)))
+        Errors.append('Error 22: File\n\'{0:s}\'\n\nAt line {1:s}\n\nNo ModuleId found in fzp file\n'.format(
+            str(InFile), str(Elem.sourceline)))
 
     # End of if len(TagStack) == 2 and StackTag == 'module':
 
@@ -1325,21 +1462,23 @@ def ProcessFzpLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Erro
         BaseTag = ''
 
     # End of If len TagStack > 2:
- 
-    logging.debug (' ProcessFzpLeafNode moduleid BaseTag %s len %s', BaseTag, len(TagStack))
+
+    logging.debug(' ProcessFzpLeafNode moduleid BaseTag %s len %s',
+                  BaseTag, len(TagStack))
 
     if len(TagStack) > 2 and BaseTag == 'views':
 
-        logging.debug (' ProcessFzpLeafNode: start processing views\n')
+        logging.debug(' ProcessFzpLeafNode: start processing views\n')
 
         # As long as we haven't cycled to 'connectors' as the primary tag,
         # keep processing views tags.
-   
+
         if not 'views' in FzpDict:
 
-            # If we don't have a views yet create an empty one. 
+            # If we don't have a views yet create an empty one.
 
-            logging.debug (' ProcessFzpLeafNode: create \'views\' in dictionary\n')
+            logging.debug(
+                ' ProcessFzpLeafNode: create \'views\' in dictionary\n')
 
             FzpDict['views'] = []
 
@@ -1347,7 +1486,7 @@ def ProcessFzpLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Erro
 
         if State['lasttag'] == 'module':
 
-            # Note that we have seen the 'views' tag now. 
+            # Note that we have seen the 'views' tag now.
 
             State['lasttag'] = 'views'
 
@@ -1357,15 +1496,16 @@ def ProcessFzpLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Erro
 
         # End of if State['lasttag'] == 'module':
 
-        # We are currently looking for file and layer names so do that. 
+        # We are currently looking for file and layer names so do that.
 
         if len(TagStack) > 3:
 
-            # We have already dealt with the TagStack 3 ('views') case above 
-            # so only call FzpProcessViewsTs3 for 4 or higher 
-            # (viewname, layers and layer). 
+            # We have already dealt with the TagStack 3 ('views') case above
+            # so only call FzpProcessViewsTs3 for 4 or higher
+            # (viewname, layers and layer).
 
-            FzpProcessViewsTs3(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level)
+            FzpProcessViewsTs3(InFile, Elem, Errors, Warnings,
+                               Info, FzpDict, TagStack, State, Level)
 
         # End of len(TagStack) > 3:
 
@@ -1377,21 +1517,23 @@ def ProcessFzpLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Erro
 
         # process the connectors
 
-        logging.debug (' ProcessFzpLeafNode: Start of processing connectors\n')
+        logging.debug(' ProcessFzpLeafNode: Start of processing connectors\n')
 
         # By the time we get here we should have all the views present so check
         # and make sure we have at least one view and warn about any that are
-        # missing or have unexpected names (no views is an error!). 
+        # missing or have unexpected names (no views is an error!).
 
         if not 'FzpCheckViews' in State:
 
-            logging.debug (' ProcessFzpLeafNode: Set State[\'FzpCheckViews\'] = [] and call FzpCheckViews State %s line %s\n', State, Elem.sourceline)
+            logging.debug(
+                ' ProcessFzpLeafNode: Set State[\'FzpCheckViews\'] = [] and call FzpCheckViews State %s line %s\n', State, Elem.sourceline)
 
             # Indicate we have executed the check so it is only done once.
 
             State['FzpCheckViews'] = []
 
-            FzpCheckViews(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level)
+            FzpCheckViews(InFile, Elem, Errors, Warnings, Info,
+                          FzpDict, TagStack, State, Level)
 
         # End of if not FzpCheckViews in State:
 
@@ -1405,24 +1547,25 @@ def ProcessFzpLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Erro
 
     # Again BaseTag is TagStack[2] (the current tag may be different.)
 
-    if len(TagStack) > 3 and  BaseTag == 'connectors':
+    if len(TagStack) > 3 and BaseTag == 'connectors':
 
-        logging.debug (' ProcessFzpLeafNode: continue processing connectors\n')
+        logging.debug(' ProcessFzpLeafNode: continue processing connectors\n')
 
-        # We have dealt with TagStack = 3 'connectors' above so only do 
+        # We have dealt with TagStack = 3 'connectors' above so only do
         # 4 and higher by calling FzpProcessConnectorsTs3.
 
-        FzpProcessConnectorsTs3(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level)
+        FzpProcessConnectorsTs3(
+            InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level)
 
     # End of if len(TagStack) > 3 and  BaseTag == 'connectors':
 
-    # If TagStack is 3 and is 'module', 'buses' 
+    # If TagStack is 3 and is 'module', 'buses'
 
     # Again BaseTag is TagStack[2] (the current tag may be different.)
 
     if len(TagStack) == 3 and BaseTag == 'buses':
 
-        logging.debug (' ProcessFzpLeafNode: start processing buses\n')
+        logging.debug(' ProcessFzpLeafNode: start processing buses\n')
 
         # Since some parts have an empty bus tag at the end of the fzp
         # don't check the previous state (but do set the new state in case
@@ -1434,67 +1577,74 @@ def ProcessFzpLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Erro
 
         if not 'buses' in FzpDict:
 
-            # If we don't have a buses yet create an empty one. 
+            # If we don't have a buses yet create an empty one.
 
-            logging.debug (' ProcessFzpLeafNode: create \'buses\' in dictionary\n')
+            logging.debug(
+                ' ProcessFzpLeafNode: create \'buses\' in dictionary\n')
 
             FzpDict['buses'] = []
 
         # End of if not 'buses' in FzpDict:
 
-        logging.debug (' ProcessFzpLeafNode: TagStack len %s\n', len(TagStack))
+        logging.debug(' ProcessFzpLeafNode: TagStack len %s\n', len(TagStack))
 
     # End of if len(TagStack) == 3 and BaseTag == 'buses':
 
     # Again BaseTag is TagStack[2] (the current tag may be different.)
 
-    if len(TagStack) > 3 and  BaseTag == 'buses':
+    if len(TagStack) > 3 and BaseTag == 'buses':
 
-        logging.debug (' ProcessFzpLeafNode: continue processing buses\n')
+        logging.debug(' ProcessFzpLeafNode: continue processing buses\n')
 
         # Go and process the bus tags
 
-        FzpProcessBusTs3(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level)
+        FzpProcessBusTs3(InFile, Elem, Errors, Warnings, Info,
+                         FzpDict, TagStack, State, Level)
 
     # End of if len(TagStack) > 3 and  BaseTag == 'buses':
 
-    logging.debug (' ProcessFzpLeafNode: before subparts processing TagStack len %s TagStack %s\n', len(TagStack), TagStack)
+    logging.debug(' ProcessFzpLeafNode: before subparts processing TagStack len %s TagStack %s\n', len(
+        TagStack), TagStack)
 
     # Again BaseTag is TagStack[2] (the current tag may be different.)
 
     if len(TagStack) == 3 and BaseTag == 'schematic-subparts':
 
-        logging.debug (' ProcessFzpLeafNode: start sub parts processing\n')
+        logging.debug(' ProcessFzpLeafNode: start sub parts processing\n')
 
         if 'buses' in FzpDict:
 
             # A bus has already been defined and won't allow schematic parts.
 
-            logging.debug (' ProcessFzpLeafNode: subparts but bus defined\n')
+            logging.debug(' ProcessFzpLeafNode: subparts but bus defined\n')
 
             if 'bus_defined' in FzpDict:
 
                 if 'bus_defined' == 'n':
 
-                    Errors.append('Error 23: File\n\'{0:s}\'\nAt line {1:s}\n\nA bus is already defined, schematic parts won\'t work with busses\n'.format(str(InFile), str(Elem.sourceline)))
+                    Errors.append('Error 23: File\n\'{0:s}\'\nAt line {1:s}\n\nA bus is already defined, schematic parts won\'t work with busses\n'.format(
+                        str(InFile), str(Elem.sourceline)))
 
-                    # Mark that we have flagged the error so we don't repeat it.
+                    # Mark that we have flagged the error so we don't repeat
+                    # it.
 
                     FzpDict['bus_defined'] = 'y'
 
                 # End of if 'bus_defined' == 'n':
 
             # End of if 'bus_defined' in FzpDict:
-    
+
         else:
-    
+
             if not 'schematic-subparts' in FzpDict:
-    
-                # If we don't have a schematic-subparts yet create an empty one. 
-                logging.debug (' ProcessFzpLeafNode: create \'schematic-subparts\' in dictionary\n')
-    
+
+                # If we don't have a schematic-subparts yet create an empty
+                # one.
+                logging.debug(
+                    ' ProcessFzpLeafNode: create \'schematic-subparts\' in dictionary\n')
+
                 FzpDict['schematic-subparts'] = []
-    
+
             # End of if not 'schematic-subparts' in FzpDict:
 
         # End of if 'buses' in FzpDict:
@@ -1509,72 +1659,84 @@ def ProcessFzpLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Erro
 
     # Again BaseTag is TagStack[2] (the current tag may be different.)
 
-    if len(TagStack) > 3 and  BaseTag == 'schematic-subparts':
+    if len(TagStack) > 3 and BaseTag == 'schematic-subparts':
 
-        logging.debug (' ProcessFzpLeafNode: continue sub parts Tag > 2 TagStack %s\n',TagStack)
+        logging.debug(
+            ' ProcessFzpLeafNode: continue sub parts Tag > 2 TagStack %s\n', TagStack)
 
         # Process the schematic-subparts section of the fzp.
 
         if not 'bus_defined' in FzpDict:
 
             # But only if there isn't a bus already defined.
-    
-            FzpProcessSchematicPartsTs3(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level)
+
+            FzpProcessSchematicPartsTs3(
+                InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level)
 
         # End of if not 'bus_defined' in FzpDict:
 
     # End of if len(TagStack) > 3 and  BaseTag == 'schematic-subparts':
-    
-    logging.debug (' Exiting ProcessFzpLeafNode Level %s State %s line %s\n', Level, State, Elem.sourceline)
 
-    logging.info (' Exiting ProcessFzpLeafNode Level %s\n', Level)
+    logging.debug(' Exiting ProcessFzpLeafNode Level %s State %s line %s\n',
+                  Level, State, Elem.sourceline)
 
-# End of def ProcessFzpLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
+    logging.info(' Exiting ProcessFzpLeafNode Level %s\n', Level)
+
+# End of def ProcessFzpLeafNode(FzpType, FileType, InFile, CurView,
+# PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State,
+# Level):
+
 
 def FzpTags(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, Level):
 
     # Looks for and log any of the Fritzing tags. We will check the dictionary
     # to make sure the appropriate tag has been seen when processing layer and
-    # pin information later. 
+    # pin information later.
 
-    logging.info (' Entering FzpTags Level %s\n', Level)
+    logging.info(' Entering FzpTags Level %s\n', Level)
 
     Tag = Elem.tag
 
     if Tag != None:
 
-        # If we have a tag go and adjust the tag stack if needed. 
+        # If we have a tag go and adjust the tag stack if needed.
 
         PopTag(TagStack, Level)
 
     # End of if Tag != None:
 
-    logging.debug (' FzpTags: Tag: %s attributes:%s TagStack %s\n',Elem.tag, Elem.attrib, TagStack)
+    logging.debug(' FzpTags: Tag: %s attributes:%s TagStack %s\n',
+                  Elem.tag, Elem.attrib, TagStack)
 
     # Check the single per file tags (more than one is an error)
 
     if Tag in ['module', 'version', 'author', 'title', 'label', 'date', 'tags', 'properties', 'taxonomy', 'url', 'schematic-subparts', 'buses']:
 
-        logging.debug (' FzpTags: Source line %s Level %s tag %s\n', Elem.sourceline, Level, Tag)
+        logging.debug(' FzpTags: Source line %s Level %s tag %s\n',
+                      Elem.sourceline, Level, Tag)
 
         # Record the tag in the dictionary (and check for more than one!)
 
         if Tag in FzpDict:
 
-            logging.debug (' FzpTags: Dup Source line %s Level %s tag %s\n', Elem.sourceline, Level, Tag)
+            logging.debug(
+                ' FzpTags: Dup Source line %s Level %s tag %s\n', Elem.sourceline, Level, Tag)
 
             # If its already been seen flag an errror.
 
-            Errors.append('Error 24: File\n\'{0:s}\'\nAt line {1:s}\n\nMore than one copy of Tag {2:s}\n'.format(str(InFile), str(Elem.sourceline), str( Tag)))
-        
+            Errors.append('Error 24: File\n\'{0:s}\'\nAt line {1:s}\n\nMore than one copy of Tag {2:s}\n'.format(
+                str(InFile), str(Elem.sourceline), str(Tag)))
+
         # End of if Tag in FzpDict:
-        
+
         FzpDict[Tag] = [Tag]
 
-    # End of if Tag in ['module', 'version', 'author', 'title', 'label', 'date', 'tags', 'properties', 'taxonomy', 'url', 'schematic-subparts', 'buses']:
+    # End of if Tag in ['module', 'version', 'author', 'title', 'label',
+    # 'date', 'tags', 'properties', 'taxonomy', 'url', 'schematic-subparts',
+    # 'buses']:
 
     # For the repeating tags: views, iconView, layers, breadboardView,
-    # schematicView, pcbView, connector, subpart, bus and the non repeating 
+    # schematicView, pcbView, connector, subpart, bus and the non repeating
     # tags connectors, schematic-subparts, buses stick them in a stack
     # so we know where we are when we come across an attribute.
 
@@ -1584,56 +1746,66 @@ def FzpTags(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, Level):
 
         TagStack.append([Tag, Level])
 
-        logging.debug (' FzpTags: End, found tag, source line %s Tag %s Level %s TagStack %s TagStack len %s\n', Elem.sourceline, Tag, Level, TagStack, len(TagStack))
+        logging.debug(' FzpTags: End, found tag, source line %s Tag %s Level %s TagStack %s TagStack len %s\n',
+                      Elem.sourceline, Tag, Level, TagStack, len(TagStack))
 
     else:
-        
-        logging.debug (' FzpTags: End didn\'t find tag, source line %s Tag %s Level %s TagStack %s TagStack len %s\n', Elem.sourceline, Tag, Level, TagStack, len(TagStack))
 
-    # End of if Tag in ['module', 'version', 'author', 'title', 'label', 'date', 'tags', 'tag', 'properties', 'property', 'spice', 'taxonomy', 'description', 'url', 'line', 'model', 'views', 'iconView', 'layers', 'layer', 'breadboardView', 'schematicView', 'pcbView', 'connectors', 'connector', 'p', 'buses', 'bus', 'nodeMember', 'schematic-subparts', 'subpart']:
+        logging.debug(' FzpTags: End didn\'t find tag, source line %s Tag %s Level %s TagStack %s TagStack len %s\n',
+                      Elem.sourceline, Tag, Level, TagStack, len(TagStack))
 
-    logging.info (' Exiting FzpTags Level %s\n', Level)
+    # End of if Tag in ['module', 'version', 'author', 'title', 'label',
+    # 'date', 'tags', 'tag', 'properties', 'property', 'spice', 'taxonomy',
+    # 'description', 'url', 'line', 'model', 'views', 'iconView', 'layers',
+    # 'layer', 'breadboardView', 'schematicView', 'pcbView', 'connectors',
+    # 'connector', 'p', 'buses', 'bus', 'nodeMember', 'schematic-subparts',
+    # 'subpart']:
 
-# End of def FzpTags(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, Level):
+    logging.info(' Exiting FzpTags Level %s\n', Level)
+
+# End of def FzpTags(InFile, Elem, Errors, Warnings, Info, FzpDict,
+# TagStack, Level):
+
 
 def FzpmoduleId(FzpType, InFile, Elem, Errors, Warnings, Info, FzpDict, State, Level):
 
-    logging.info (' Entering FzpmoduleId Level %s\n', Level)
+    logging.info(' Entering FzpmoduleId Level %s\n', Level)
 
     LeadingPartRegex = re.compile(r'^part\.', re.IGNORECASE)
 
     TrailingFzpRegex = re.compile(r'\.fzp$', re.IGNORECASE)
 
-    # Check to see if we have a moduleId and flag an error if not, because 
-    # one is required. 
-    
-    ModuleId =  Elem.get('moduleId')
+    # Check to see if we have a moduleId and flag an error if not, because
+    # one is required.
 
-    logging.debug(' FzpmoduleId: ModuleId %s\n',ModuleId)
+    ModuleId = Elem.get('moduleId')
+
+    logging.debug(' FzpmoduleId: ModuleId %s\n', ModuleId)
 
     # Make a local copy of the base file name (without its path if any)
-    # as we may make changes to it that we don't want to propigate. 
+    # as we may make changes to it that we don't want to propigate.
 
     File = os.path.basename(InFile)
 
     # Remove the trailing .bak if it is present.
 
-    File = re.sub(r'\.bak$','', File)
+    File = re.sub(r'\.bak$', '', File)
 
     if ModuleId == None:
 
         if not 'moduleId' in FzpDict:
 
-            Errors.append('Error 22: File\n\'{0:s}\'\n\nAt line {1:s}\n\nNo ModuleId found in fzp file\n'.format(str(InFile), str(Elem.sourceline)))
+            Errors.append('Error 22: File\n\'{0:s}\'\n\nAt line {1:s}\n\nNo ModuleId found in fzp file\n'.format(
+                str(InFile), str(Elem.sourceline)))
 
         # End of if not 'moduleId' in FzpDict:
 
         logging.debug(' FzpmoduleId: no moduleId\n')
 
     else:
-            
-        # We have found a moduleId so process it. Check that it matches the 
-        # input filename without the fzp, and there is only one of them. Look 
+
+        # We have found a moduleId so process it. Check that it matches the
+        # input filename without the fzp, and there is only one of them. Look
         # for (and warn if absent) a referenceFile and fritzingVersion as well.
 
         # Check if this is a breadboard file and mark that in State if so.
@@ -1644,7 +1816,8 @@ def FzpmoduleId(FzpType, InFile, Elem, Errors, Warnings, Info, FzpDict, State, L
 
         # End of if File in ['breadboard.fzp', 'breadboard2.fzp']:
 
-        logging.debug(' FzpmoduleId: FzpType %s InFile %s File %s\n', FzpType, InFile,  File)
+        logging.debug(' FzpmoduleId: FzpType %s InFile %s File %s\n',
+                      FzpType, InFile,  File)
 
         if FzpType == 'FZPPART':
 
@@ -1665,13 +1838,15 @@ def FzpmoduleId(FzpType, InFile, Elem, Errors, Warnings, Info, FzpDict, State, L
 
         if File != ModuleId:
 
-            Warnings.append('Warning 3: File\n\'{0:s}\'\nAt line {1:s}\n\nModuleId \'{2:s}\'\n\nDoesn\'t match filename\n\n\'{3:s}\'\n'.format(str(InFile), str(Elem.sourceline), str(ModuleId), str(File)))
-            
+            Warnings.append('Warning 3: File\n\'{0:s}\'\nAt line {1:s}\n\nModuleId \'{2:s}\'\n\nDoesn\'t match filename\n\n\'{3:s}\'\n'.format(
+                str(InFile), str(Elem.sourceline), str(ModuleId), str(File)))
+
         # End of if File != ModuleId:
-    
+
         if 'moduleId' in FzpDict:
-        
-            Errors.append('Error 25: File\n\'{0:s}\'\nAt line {1:s}\n\nMultiple ModuleIds found in fzp file\n'.format(str(InFile), str(Elem.sourceline)))
+
+            Errors.append('Error 25: File\n\'{0:s}\'\nAt line {1:s}\n\nMultiple ModuleIds found in fzp file\n'.format(
+                str(InFile), str(Elem.sourceline)))
 
             FzpDict['moduleId'].append(ModuleId)
 
@@ -1682,7 +1857,8 @@ def FzpmoduleId(FzpType, InFile, Elem, Errors, Warnings, Info, FzpDict, State, L
 
             FzpDict['moduleId'] = [ModuleId]
 
-            logging.debug(' FzpmoduleId: Added ModuleId %s to FzpDict\n', ModuleId)
+            logging.debug(
+                ' FzpmoduleId: Added ModuleId %s to FzpDict\n', ModuleId)
 
         # End of if 'ModuleId' in FzpDict:
 
@@ -1690,19 +1866,21 @@ def FzpmoduleId(FzpType, InFile, Elem, Errors, Warnings, Info, FzpDict, State, L
 
     # Now look for a reference file.
 
-    RefFile =  Elem.get('referenceFile')
+    RefFile = Elem.get('referenceFile')
 
     logging.debug(' FzpmoduleId: ReFile %s File %s\n', RefFile, File)
-    
+
     if RefFile == None:
 
-        Warnings.append('Warning 4: File\n\'{0:s}\'\nAt line {1:s}\n\nNo referenceFile found in fzp file\n'.format(str(InFile), str(Elem.sourceline)))
+        Warnings.append('Warning 4: File\n\'{0:s}\'\nAt line {1:s}\n\nNo referenceFile found in fzp file\n'.format(
+            str(InFile), str(Elem.sourceline)))
 
     else:
 
         if 'referenceFile' in FzpDict:
 
-            Warnings.append('Warning 5: File\n\'{0:s}\'\nAt line {1:s}\n\nMultiple referenceFile found in fzp file\n'.format(str(InFile), str(Elem.sourceline)))
+            Warnings.append('Warning 5: File\n\'{0:s}\'\nAt line {1:s}\n\nMultiple referenceFile found in fzp file\n'.format(
+                str(InFile), str(Elem.sourceline)))
 
             FzpDict['referenceFile'].append(RefFile)
 
@@ -1717,10 +1895,11 @@ def FzpmoduleId(FzpType, InFile, Elem, Errors, Warnings, Info, FzpDict, State, L
 
         if RefFile != File + '.fzp':
 
-            # The reference file doesn't match the input file name which it 
+            # The reference file doesn't match the input file name which it
             # should.
 
-            Warnings.append('Warning 6: File\n\'{0:s}\'\nAt line {1:s}\n\nReferenceFile name \n\n\'{2:s}\'\n\nDoesn\'t match fzp filename\n\n\'{3:s}\'\n'.format(str(InFile), str(Elem.sourceline), str(RefFile), str(File + '.fzp')))
+            Warnings.append('Warning 6: File\n\'{0:s}\'\nAt line {1:s}\n\nReferenceFile name \n\n\'{2:s}\'\n\nDoesn\'t match fzp filename\n\n\'{3:s}\'\n'.format(
+                str(InFile), str(Elem.sourceline), str(RefFile), str(File + '.fzp')))
 
         # End of if RefFile != File + '.fzp':
 
@@ -1728,19 +1907,21 @@ def FzpmoduleId(FzpType, InFile, Elem, Errors, Warnings, Info, FzpDict, State, L
 
     # Then check for a Fritzing version
 
-    Version =  Elem.get('fritzingVersion')
+    Version = Elem.get('fritzingVersion')
 
     if Version == None:
 
-            Warnings.append('Warning 7: File\n\'{0:s}\'\nAt line {1:s}\n\nNo Fritzing version in fzp file\n'.format(str(InFile), str(Elem.sourceline)))
+        Warnings.append('Warning 7: File\n\'{0:s}\'\nAt line {1:s}\n\nNo Fritzing version in fzp file\n'.format(
+            str(InFile), str(Elem.sourceline)))
 
     else:
 
         # There is a Fritzing version so record it.
-            
+
         if 'fritzingVersion' in FzpDict:
-        
-            Warnings.append('Warning 8: File\n\'{0:s}\'\nAt line {1:s}\n\nMultiple fritzingVersion found in fzp file\n'.format(str(InFile), str(Elem.sourceline)))
+
+            Warnings.append('Warning 8: File\n\'{0:s}\'\nAt line {1:s}\n\nMultiple fritzingVersion found in fzp file\n'.format(
+                str(InFile), str(Elem.sourceline)))
 
             FzpDict['fritzingVersion'].append(Version)
 
@@ -1755,38 +1936,44 @@ def FzpmoduleId(FzpType, InFile, Elem, Errors, Warnings, Info, FzpDict, State, L
 
     # End of if Version == None:
 
-    logging.info (' Exiting moduleId found moduleId\n')
+    logging.info(' Exiting moduleId found moduleId\n')
 
-# End of def FzpmoduleId(FzpType, InFile, Elem, Errors, Warnings, Info, FzpDict, State, Level):
+# End of def FzpmoduleId(FzpType, InFile, Elem, Errors, Warnings, Info,
+# FzpDict, State, Level):
+
 
 def FzpProcessViewsTs3(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
 
     # We are in the views grouping so find and record our groupnames, layerIds
-    # and filenames in the input stream. 
+    # and filenames in the input stream.
 
-    logging.info (' Entering FzpProcessViewsTs3 Level %s source line %s\n', Level, Elem.sourceline)
+    logging.info(
+        ' Entering FzpProcessViewsTs3 Level %s source line %s\n', Level, Elem.sourceline)
 
     StackTag, StackLevel = TagStack[len(TagStack) - 1]
 
-    logging.debug (' FzpProcessViewsTs3: StackTag %s State %s TagStack %s attributes %s\n', StackTag, State, TagStack, Elem.attrib)
+    logging.debug(' FzpProcessViewsTs3: StackTag %s State %s TagStack %s attributes %s\n',
+                  StackTag, State, TagStack, Elem.attrib)
 
-    # TagStack length of 3 ('empty', 'module', 'views') is what tripped the 
-    # call to this routine so we start processing at TagStack length 4 in 
-    # this large case statement which trips when it finds the correct state 
+    # TagStack length of 3 ('empty', 'module', 'views') is what tripped the
+    # call to this routine so we start processing at TagStack length 4 in
+    # this large case statement which trips when it finds the correct state
     # (or complains if it finds an incorrect state due to errrorS.)
 
     if len(TagStack) == 4:
 
         # TagStack should be 'module', 'views', view name so check and process
         # the view name. Check that State['nexttag'] is 'viewname' or 'layer'
-        # (the end of a previous entry) to indicate that is what we are 
-        # expecting at this time. 
+        # (the end of a previous entry) to indicate that is what we are
+        # expecting at this time.
 
         if State['nexttag'] != 'viewname' and State['nexttag'] != 'layer':
 
-            Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, expected tag {2:s} not a view name\n'.format(str(InFile), str(Elem.sourceline), str(State['nexttag'])))
-            
-        # End of if State['nexttag'] != 'viewname' and State['nexttag'] != 'layer':
+            Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, expected tag {2:s} not a view name\n'.format(
+                str(InFile), str(Elem.sourceline), str(State['nexttag'])))
+
+        # End of if State['nexttag'] != 'viewname' and State['nexttag'] !=
+        # 'layer':
 
         # Get the latest tag value from StackTag in to View
 
@@ -1794,22 +1981,24 @@ def FzpProcessViewsTs3(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, 
 
         if View == 'layers':
 
-            # If it is 'layers' (indicating we don't have a valid view),  
-            # set View to none so it has a value (even though its wrong) and 
-            # the state is unrecoverable. So as we have noted the error just 
-            # proceed although it will likely cause an error cascade. 
+            # If it is 'layers' (indicating we don't have a valid view),
+            # set View to none so it has a value (even though its wrong) and
+            # the state is unrecoverable. So as we have noted the error just
+            # proceed although it will likely cause an error cascade.
 
             View = 'none'
 
-            logging.debug (' FzpProcessViewsTs3: missing view, View set to none\n', View)
+            logging.debug(
+                ' FzpProcessViewsTs3: missing view, View set to none\n', View)
 
-            Errors.append('Error 27: File\n\'{0:s}\'\nAt line {1:s}\n\nView name missing\n'.format(str(InFile), str(Elem.sourceline)))
+            Errors.append('Error 27: File\n\'{0:s}\'\nAt line {1:s}\n\nView name missing\n'.format(
+                str(InFile), str(Elem.sourceline)))
 
         # End of if View == 'layers':
-            
+
         if View in ['iconView', 'breadboardView', 'schematicView', 'pcbView']:
 
-            # View value is legal so process it. 
+            # View value is legal so process it.
 
             if not 'views' in FzpDict:
 
@@ -1817,7 +2006,8 @@ def FzpProcessViewsTs3(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, 
 
                 FzpDict['views'] = [View]
 
-                logging.debug (' FzpProcessViewsTs3: Created dict entry views and added  %s\n', View)
+                logging.debug(
+                    ' FzpProcessViewsTs3: Created dict entry views and added  %s\n', View)
 
             else:
 
@@ -1825,17 +2015,20 @@ def FzpProcessViewsTs3(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, 
 
                     # Error, already seen.
 
-                    Errors.append('Error 28: File\n\'{0:s}\'\nAt line {1:s}\n\nMultiple view tags {2:s} present, ignored\n'.format(str(InFile), str(Elem.sourceline), str(View)))
+                    Errors.append('Error 28: File\n\'{0:s}\'\nAt line {1:s}\n\nMultiple view tags {2:s} present, ignored\n'.format(
+                        str(InFile), str(Elem.sourceline), str(View)))
 
-                    logging.debug (' FzpProcessViewsTs3: error view %s already present\n', View)
+                    logging.debug(
+                        ' FzpProcessViewsTs3: error view %s already present\n', View)
 
-                else: 
+                else:
 
-                    # Add this view to the list. 
-                    
+                    # Add this view to the list.
+
                     FzpDict['views'].append(View)
 
-                    logging.debug (' FzpProcessViewsTs3: appended View %s to dict entry views\n', View)
+                    logging.debug(
+                        ' FzpProcessViewsTs3: appended View %s to dict entry views\n', View)
 
                 # End of if View in FzpDict['views']:
 
@@ -1843,21 +2036,26 @@ def FzpProcessViewsTs3(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, 
 
         else:
 
-            Errors.append('Error 29: File\n\'{0:s}\'\nAt line {1:s}\n\nView tag {2:s} not recognized (typo?)\n'.format(str(InFile), str(Elem.sourceline), str(View)))
+            Errors.append('Error 29: File\n\'{0:s}\'\nAt line {1:s}\n\nView tag {2:s} not recognized (typo?)\n'.format(
+                str(InFile), str(Elem.sourceline), str(View)))
 
-            logging.debug (' FzpProcessViewsTs3: error View %s not recognized\n', View)
+            logging.debug(
+                ' FzpProcessViewsTs3: error View %s not recognized\n', View)
 
-        # End of if View in ['iconView', 'breadboardView', 'schematicView', 'pcbView']:
+        # End of if View in ['iconView', 'breadboardView', 'schematicView',
+        # 'pcbView']:
 
-        # Now set State['lastvalue'] to View to keep state for the next entry 
+        # Now set State['lastvalue'] to View to keep state for the next entry
 
         State['lastvalue'] = View
 
-        # Set State['nexttag'] to the next tag we expect to see for the next entry
+        # Set State['nexttag'] to the next tag we expect to see for the next
+        # entry
 
         State['nexttag'] = 'layers'
 
-        logging.debug (' FzpProcessViewsTs3: Set State[\'views\'] to %s and State[\'tag\'] to %s\n', State['lastvalue'], State['nexttag'])
+        logging.debug(' FzpProcessViewsTs3: Set State[\'views\'] to %s and State[\'tag\'] to %s\n', State[
+                      'lastvalue'], State['nexttag'])
 
     elif len(TagStack) == 5 and StackTag == 'layers':
 
@@ -1865,42 +2063,46 @@ def FzpProcessViewsTs3(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, 
 
             # note an internal state error.
 
-            Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nNState error, nexttag {2:s} not \'layers\'\n'.format(str(InFile), str(Elem.sourceline), str(State['nexttag'])))
-           
-        # End of if State['nexttag'] != 'layers': 
-        
-        # Get the current tag value from the state variable set on a previous 
-        # call to this routine. 
+            Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nNState error, nexttag {2:s} not \'layers\'\n'.format(
+                str(InFile), str(Elem.sourceline), str(State['nexttag'])))
 
-        View = State['lastvalue'] 
+        # End of if State['nexttag'] != 'layers':
 
-        # We should have an image file here so try and get it. 
-        
+        # Get the current tag value from the state variable set on a previous
+        # call to this routine.
+
+        View = State['lastvalue']
+
+        # We should have an image file here so try and get it.
+
         Image = Elem.get('image')
 
         if Image == None:
 
             # We didn't find an image, so set it to 'none' so it has a value
-            # even if it is bogus. 
+            # even if it is bogus.
 
             Image = 'none'
 
-            Errors.append('Error 30: File\n\'{0:s}\'\nAt line {1:s}\n\nNo image name present\n'.format(str(InFile), str(Elem.sourceline)))
+            Errors.append('Error 30: File\n\'{0:s}\'\nAt line {1:s}\n\nNo image name present\n'.format(
+                str(InFile), str(Elem.sourceline)))
 
         # End of if Image == None:
-        
-        # We have found an image attribute so put it in the dictonary 
+
+        # We have found an image attribute so put it in the dictonary
         # indexed by viewname aquired above.
 
         if (View + '.image') in FzpDict:
 
             # too many input files!
 
-            Errors.append('Error 31: File\n\'{0:s}\'\nAt line {1:s}\n\nMultiple {2:s} image files present\n'.format(str(InFile), str(Elem.sourceline), str(View)))
+            Errors.append('Error 31: File\n\'{0:s}\'\nAt line {1:s}\n\nMultiple {2:s} image files present\n'.format(
+                str(InFile), str(Elem.sourceline), str(View)))
 
             FzpDict[View + '.image'].append(Image)
-    
-            logging.debug (' FzpProcessViewsTs3: error multiple image files added %s\n', Image)
+
+            logging.debug(
+                ' FzpProcessViewsTs3: error multiple image files added %s\n', Image)
 
         else:
 
@@ -1908,11 +2110,11 @@ def FzpProcessViewsTs3(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, 
 
             FzpDict[View + '.image'] = [Image]
 
-            logging.debug (' FzpProcessViewsTs3: added image file %s\n', Image)
+            logging.debug(' FzpProcessViewsTs3: added image file %s\n', Image)
 
         # End if (View + 'image') in FzpDict:
 
-        # Then set State['lastvalue'] to the image to capture the layerids that 
+        # Then set State['lastvalue'] to the image to capture the layerids that
         # should follow this image file.
 
         State['image'] = Image
@@ -1927,13 +2129,14 @@ def FzpProcessViewsTs3(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, 
 
             # note an internal state error.
 
-            Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, nexttag {2:s} not \'layer\'\n'.format(str(InFile), str(Elem.sourceline), str(State['nexttag'])))
-           
-        # End of if State['nexttag'] != 'layers': 
-        
-        # set the current view from State['lastvalue'] and the current image 
-        # path/filename value from State['image'] for dict keys. The values 
-        # are those saved the last time we were in this routine). 
+            Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, nexttag {2:s} not \'layer\'\n'.format(
+                str(InFile), str(Elem.sourceline), str(State['nexttag'])))
+
+        # End of if State['nexttag'] != 'layers':
+
+        # set the current view from State['lastvalue'] and the current image
+        # path/filename value from State['image'] for dict keys. The values
+        # are those saved the last time we were in this routine).
 
         View = State['lastvalue']
 
@@ -1947,11 +2150,12 @@ def FzpProcessViewsTs3(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, 
         if LayerId == None:
 
             # There isn't a layer id so set it to none so it has a value even
-            # if it is bogus. 
+            # if it is bogus.
 
             LayerId = 'none'
 
-            Errors.append('Error 32: File\n\'{0:s}\'\nAt line {1:s}\n\nNo layerId value present\n'.format(str(InFile), str(Elem.sourceline)))
+            Errors.append('Error 32: File\n\'{0:s}\'\nAt line {1:s}\n\nNo layerId value present\n'.format(
+                str(InFile), str(Elem.sourceline)))
 
         # End of if LayerId == None:
 
@@ -1965,7 +2169,8 @@ def FzpProcessViewsTs3(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, 
 
             if Index in FzpDict:
 
-                Errors.append('Error 33: File\n\'{0:s}\'\nAt line {1:s}\n\nView {2:s} already has layerId {3:s}, {4:s} ignored\n'.format(str(InFile), str(Elem.sourceline),str(View), str(FzpDict[Index]), str(LayerId)))
+                Errors.append('Error 33: File\n\'{0:s}\'\nAt line {1:s}\n\nView {2:s} already has layerId {3:s}, {4:s} ignored\n'.format(
+                    str(InFile), str(Elem.sourceline), str(View), str(FzpDict[Index]), str(LayerId)))
 
             else:
 
@@ -1980,17 +2185,19 @@ def FzpProcessViewsTs3(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, 
 
             if not Index in FzpDict:
 
-                # this is the first and possibly only layerId so create it. 
+                # this is the first and possibly only layerId so create it.
 
                 FzpDict[Index] = [LayerId]
 
-                logging.debug (' FzpProcessViewsTs3: created LayerId %s\n', LayerId)
+                logging.debug(
+                    ' FzpProcessViewsTs3: created LayerId %s\n', LayerId)
 
             elif LayerId in FzpDict[Index]:
 
                 # must be unique and isn't.
 
-                Errors.append('Error 33: File\n{0:s}\nAt line {1:s}\n\nView {2:s} already has layerId {3:s}, ignored\n'.format(str(InFile), str(Elem.sourceline),str(View), str(FzpDict[Index]), str(LayerId)))
+                Errors.append('Error 33: File\n{0:s}\nAt line {1:s}\n\nView {2:s} already has layerId {3:s}, ignored\n'.format(
+                    str(InFile), str(Elem.sourceline), str(View), str(FzpDict[Index]), str(LayerId)))
 
             else:
 
@@ -1998,18 +2205,20 @@ def FzpProcessViewsTs3(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, 
 
                 FzpDict[Index].append(LayerId)
 
-                logging.debug (' FzpProcessViewsTs3: appended LayerId %s\n', LayerId)
+                logging.debug(
+                    ' FzpProcessViewsTs3: appended LayerId %s\n', LayerId)
 
             # End of if not Index in FzpDict:
 
         # End of if View != 'pcbView':
 
-        # if the view is pcbview and the layer is copper0 or copper1 note 
+        # if the view is pcbview and the layer is copper0 or copper1 note
         # the layers presense to decide if this is a through hole or smd part
         # later (if there is only copper1 layer it is smd if both are present
         # it is through hole only copper0 is an error.
 
-        logging.debug (' FzpProcessViewsTs3: View %s LayerId %s\n', View, LayerId)
+        logging.debug(
+            ' FzpProcessViewsTs3: View %s LayerId %s\n', View, LayerId)
 
         if View == 'pcbView' and LayerId in ['copper0', 'copper1']:
 
@@ -2023,33 +2232,37 @@ def FzpProcessViewsTs3(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, 
 
         # End of if View == 'pcbview' and LayerId in ['copper0', 'copper1']:
 
-        # State is fine as is, no need for updates here. 
+        # State is fine as is, no need for updates here.
 
     else:
 
         # Input state incorrect so set an error.
 
-        Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, expected tag {2:s} got tag {3:s}\n'.format(str(InFile), str(Elem.sourceline), str(State['nexttag']), str(StackTag)))
-            
+        Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, expected tag {2:s} got tag {3:s}\n'.format(
+            str(InFile), str(Elem.sourceline), str(State['nexttag']), str(StackTag)))
+
         # then set the next expected tag to be 'layer' for the layerId.
 
         State['nexttag'] = 'layer'
 
-        logging.debug (' FzpProcessViewsTs3: unknown state combination expected %s got %s\n', State['nexttag'], StackTag)
+        logging.debug(' FzpProcessViewsTs3: unknown state combination expected %s got %s\n', State[
+                      'nexttag'], StackTag)
 
     # End of if len(TagStack) == 4:
 
-    logging.debug (' FzpProcessViewsTs3: FzpDict: %s\n', FzpDict)
+    logging.debug(' FzpProcessViewsTs3: FzpDict: %s\n', FzpDict)
 
-    logging.info (' Exiting FzpProcessViewsTs3 Level %s\n', Level)
+    logging.info(' Exiting FzpProcessViewsTs3 Level %s\n', Level)
 
-# End of def FzpProcessViewsTs3(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
+# End of def FzpProcessViewsTs3(InFile, Elem, Errors, Warnings, Info,
+# FzpDict, TagStack, State, Level):
+
 
 def FzpCheckViews(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
 
-    logging.info (' Entering FzpCheckViews Level %s\n', Level)
+    logging.info(' Entering FzpCheckViews Level %s\n', Level)
 
-    logging.debug (' FzpCheckViews: State: %s\n', State)
+    logging.debug(' FzpCheckViews: State: %s\n', State)
 
     # note no valid views seen yet
 
@@ -2057,18 +2270,19 @@ def FzpCheckViews(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State
 
     if not 'views' in FzpDict:
 
-        Errors.append('Error 34: File\n\'{0:s}\'\n\nNo views found.\n'.format(str(InFile)))
-       
+        Errors.append(
+            'Error 34: File\n\'{0:s}\'\n\nNo views found.\n'.format(str(InFile)))
+
     else:
 
         # Check for unexpected View names
 
-    
         for View in FzpDict['views']:
 
             if View not in ['iconView', 'breadboardView', 'schematicView', 'pcbView']:
 
-                Errors.append('Error 35: File\n\'{0:s}\'\n\nUnknown view {1:s} found. (Typo?)\n'.format(str(InFile), str(View)))
+                Errors.append('Error 35: File\n\'{0:s}\'\n\nUnknown view {1:s} found. (Typo?)\n'.format(
+                    str(InFile), str(View)))
 
             else:
 
@@ -2076,7 +2290,8 @@ def FzpCheckViews(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State
 
                 ViewsSeen += 1
 
-            # End of if View not in ['iconView', 'breadboardView', 'schematicView', 'pcbView']
+            # End of if View not in ['iconView', 'breadboardView',
+            # 'schematicView', 'pcbView']
 
         # End of for View in FzpDict['views']:
 
@@ -2086,17 +2301,19 @@ def FzpCheckViews(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State
 
     if ViewsSeen == 0:
 
-            Errors.append('Error 36: File\n\'{0:s}\'\n\nNo valid views found.\n'.format(str(InFile)))
+        Errors.append(
+            'Error 36: File\n\'{0:s}\'\n\nNo valid views found.\n'.format(str(InFile)))
 
     elif ViewsSeen < 4:
 
-            Warnings.append('Warning 9: File\n\'{0:s}\'\n\nOne or more expected views missing (may be intended)\n'.format(str(InFile)))
-         
+        Warnings.append(
+            'Warning 9: File\n\'{0:s}\'\n\nOne or more expected views missing (may be intended)\n'.format(str(InFile)))
+
     # End of if ViewsSeen == 0:
 
-    # Now check for copper0 and copper1 layers. Only copper1 indicates 
+    # Now check for copper0 and copper1 layers. Only copper1 indicates
     # an smd part, both copper0 and copper1 indicates a through hole part
-    # and only copper0 is an error. No copper or State['hybridsetforpcbView'] 
+    # and only copper0 is an error. No copper or State['hybridsetforpcbView']
     # indicates no pcb view.
 
     if 'hybridsetforpcbView' in State:
@@ -2107,97 +2324,111 @@ def FzpCheckViews(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State
 
     elif 'copper0.layerid' in FzpDict and 'copper1.layerid' in FzpDict:
 
-        Info.append('File\n\'{0:s}\'\n\nThis is a through hole part as both copper0 and copper1 views are present.\nIf you wanted a smd part remove the copper0 definition from line {1:s}\n'.format(str(InFile), str(FzpDict['copper0.lineno'])))
+        Info.append('File\n\'{0:s}\'\n\nThis is a through hole part as both copper0 and copper1 views are present.\nIf you wanted a smd part remove the copper0 definition from line {1:s}\n'.format(
+            str(InFile), str(FzpDict['copper0.lineno'])))
 
     elif not 'copper0.layerid' in FzpDict and 'copper1.layerid' in FzpDict:
 
-        Info.append('File\n\'{0:s}\'\n\nThis is a smd part as only the copper1 view is present.\nIf you wanted a through hole part add the copper0 definition before line {1:s}\n'.format(str(InFile), str(FzpDict['copper1.lineno'])))
+        Info.append('File\n\'{0:s}\'\n\nThis is a smd part as only the copper1 view is present.\nIf you wanted a through hole part add the copper0 definition before line {1:s}\n'.format(
+            str(InFile), str(FzpDict['copper1.lineno'])))
 
     elif 'copper0.layerid' in FzpDict and not 'copper1.layerid' in FzpDict:
 
-        Errors.append('Error 37: File\n\'{0:s}\'\n\nThis is a smd part as only the copper0 view is present but it is on the bottom layer, not the top.\nIf you wanted a smd part change copper0 to copper 1 at line  {1:s}\nIf you wanted a through hole part add the copper1 definition after line {1:s}\n'.format(str(InFile), str(FzpDict['copper0.lineno'])))
+        Errors.append('Error 37: File\n\'{0:s}\'\n\nThis is a smd part as only the copper0 view is present but it is on the bottom layer, not the top.\nIf you wanted a smd part change copper0 to copper 1 at line  {1:s}\nIf you wanted a through hole part add the copper1 definition after line {1:s}\n'.format(
+            str(InFile), str(FzpDict['copper0.lineno'])))
 
     # End of if 'hybridsetforpcbView' in State:
 
-    logging.info (' Exiting FzpCheckViews Level %s\n', Level)
+    logging.info(' Exiting FzpCheckViews Level %s\n', Level)
 
-# End of FzpCheckViews(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
+# End of FzpCheckViews(InFile, Elem, Errors, Warnings, Info, FzpDict,
+# TagStack, State, Level):
+
 
 def FzpProcessConnectorsTs3(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
 
     # We are in the connectors grouping so find and record connectors and their
-    # attributes in the input stream. 
+    # attributes in the input stream.
 
-    logging.info (' Entering FzpProcessConnectorsTs3 Level %s source line %s\n', Level, Elem.sourceline)
+    logging.info(
+        ' Entering FzpProcessConnectorsTs3 Level %s source line %s\n', Level, Elem.sourceline)
 
-    logging.debug (' FzpProcessConnectorsTs3: Entry TagStack %s State %s Errors %s\n', TagStack, State, Errors)
+    logging.debug(
+        ' FzpProcessConnectorsTs3: Entry TagStack %s State %s Errors %s\n', TagStack, State, Errors)
 
-    # TagStack length of 3 ('empty', 'module', 'connectors') is what tripped 
-    # the call to this routine so we start processing at TagStack length 4 in 
-    # this large case statement which trips when it finds the correct state 
+    # TagStack length of 3 ('empty', 'module', 'connectors') is what tripped
+    # the call to this routine so we start processing at TagStack length 4 in
+    # this large case statement which trips when it finds the correct state
     # (or complains if it finds an incorrect state due to errrorS.)
 
     if len(TagStack) == 4:
 
         # Go and process the TagStack level 4 stuff (connector name type id)
 
-        FzpProcessConnectorsTs4(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level)
+        FzpProcessConnectorsTs4(
+            InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level)
 
     elif len(TagStack) == 5:
 
         # Go and process the TagStack level 5 stuff (description or views)
 
-        FzpProcessConnectorsTs5(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level)
-
+        FzpProcessConnectorsTs5(
+            InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level)
 
     elif len(TagStack) == 6:
 
         # Go and process the TagStack level 6 stuff (viewname)
 
-        FzpProcessConnectorsTs6(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level)
+        FzpProcessConnectorsTs6(
+            InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level)
 
     elif len(TagStack) == 7:
 
         # Go and process the TagStack level 7 stuff (p svgId layer terminalId
         # legId copper0 copper1 etc.)
 
-        FzpProcessConnectorsTs7(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level)
+        FzpProcessConnectorsTs7(
+            InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level)
 
     else:
 
-        # Too many levels down in the tag stack. There is an error somewhere. 
+        # Too many levels down in the tag stack. There is an error somewhere.
 
-        Errors.append('Error 38: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, tag stack is at level {2:s} and should only go to level 7\n'.format(str(InFile), str(Elem.sourceline), str(len(TagStack))))
+        Errors.append('Error 38: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, tag stack is at level {2:s} and should only go to level 7\n'.format(
+            str(InFile), str(Elem.sourceline), str(len(TagStack))))
 
     # End of if len(TagStack) == 4:
 
-    logging.info (' Exiting FzpProcessConnectorsTs3 Level %s\n', Level)
+    logging.info(' Exiting FzpProcessConnectorsTs3 Level %s\n', Level)
 
-# End of def FzpProcessConnectorsTs4(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
+# End of def FzpProcessConnectorsTs4(InFile, Elem, Errors, Warnings, Info,
+# FzpDict, TagStack, State, Level):
+
 
 def FzpProcessConnectorsTs4(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
 
-    logging.info (' Entering FzpProcessConnectorsTs4 Level %s source line %s\n', Level, Elem.sourceline)
+    logging.info(
+        ' Entering FzpProcessConnectorsTs4 Level %s source line %s\n', Level, Elem.sourceline)
 
-    logging.debug (' FzpProcessConnectorsTs4: Entry TagStack %s State %s\n', TagStack, State)
-
+    logging.debug(
+        ' FzpProcessConnectorsTs4: Entry TagStack %s State %s\n', TagStack, State)
 
     LeadingConnectorRegex = re.compile(r'connector',  re.IGNORECASE)
 
     # TagStack should be 'module', 'connectors', 'connector' with attributes
-    # name, type and id so check and process them. Check that 
-    # State['nexttag'] is 'connector' or 'p' (from the end of a previous 
-    # connector) to indicate that is what we are expecting at this time. 
-    
-    # Because we may also have spice data here (that we want to ignore) that 
-    # isn't on the tag stack, check if the current tag may be spice (or at 
-    # typo, we can't tell the difference) by checking the current tag value. 
+    # name, type and id so check and process them. Check that
+    # State['nexttag'] is 'connector' or 'p' (from the end of a previous
+    # connector) to indicate that is what we are expecting at this time.
+
+    # Because we may also have spice data here (that we want to ignore) that
+    # isn't on the tag stack, check if the current tag may be spice (or at
+    # typo, we can't tell the difference) by checking the current tag value.
 
     # Set the value of Tag from Elem (because spice tags won't be on the stack)
 
     Tag = Elem.tag
 
-    logging.debug (' ProcessConnectorsTs4: initial Tag %s\n', Tag)
+    logging.debug(' ProcessConnectorsTs4: initial Tag %s\n', Tag)
 
     # Since we can have spice data inserted here, check the tag to see if it
     # is one we are willing to deal with. If not read on discarding and warning
@@ -2210,73 +2441,81 @@ def FzpProcessConnectorsTs4(InFile, Elem, Errors, Warnings, Info, FzpDict, TagSt
 
         if not Tag in ['erc', 'voltage', 'current']:
 
-            logging.debug (' FzpProcessConnectorsTs4: assuming Tag %s is spice data\n', Tag)
+            logging.debug(
+                ' FzpProcessConnectorsTs4: assuming Tag %s is spice data\n', Tag)
 
-            Warnings.append('Warning 10: File\n\'{0:s}\'\nAt line {1:s}\n\nTag {2:s}\nis not recognized and assumed to be spice data which is ignored\n(but it might be a typo, thus this warning)\n'.format(str(InFile), str(Elem.sourceline), str(Tag)))
+            Warnings.append('Warning 10: File\n\'{0:s}\'\nAt line {1:s}\n\nTag {2:s}\nis not recognized and assumed to be spice data which is ignored\n(but it might be a typo, thus this warning)\n'.format(
+                str(InFile), str(Elem.sourceline), str(Tag)))
 
         # End of if not Tag in ['erc', 'voltage', 'current']:
-         
+
         # leave the state variables as is until we find something we recognize.
 
     else:
-    
+
         StackTag, StackLevel = TagStack[len(TagStack) - 1]
 
         Tag = StackTag
-    
+
         if State['nexttag'] != 'connector' and State['nexttag'] != 'p':
-    
-            logging.debug (' FzpProcessConnectorsTs4: TagStack 3: %s should be p or connector\n', State['nexttag'])
-    
-            Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, expected tag \'connector\' or \'p\' not {2:s}\n'.format(str(InFile), str(Elem.sourceline), str(State['nexttag'])))
-            
-        # End of if State['nexttag'] != 'connector' and State['nexttag'] != 'p':
-    
+
+            logging.debug(
+                ' FzpProcessConnectorsTs4: TagStack 3: %s should be p or connector\n', State['nexttag'])
+
+            Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, expected tag \'connector\' or \'p\' not {2:s}\n'.format(
+                str(InFile), str(Elem.sourceline), str(State['nexttag'])))
+
+        # End of if State['nexttag'] != 'connector' and State['nexttag'] !=
+        # 'p':
+
         # Make sure the tag we saw is connector (independent of what we
         # expected to see above)
-    
+
         if Tag != 'connector':
-    
-            logging.debug (' FzpProcessConnectorsTs4: TagStack 3: Tag %s should be connector\n', Tag)
-    
-            Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nSate error, expected tag \'connector\' not {2:s}\n'.format(str(InFile), str(Elem.sourceline), str(Tag)))
-    
+
+            logging.debug(
+                ' FzpProcessConnectorsTs4: TagStack 3: Tag %s should be connector\n', Tag)
+
+            Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nSate error, expected tag \'connector\' not {2:s}\n'.format(
+                str(InFile), str(Elem.sourceline), str(Tag)))
+
         # End of if Tag != 'connector':
-    
+
         # Set the current tag to 'connector'
-    
+
         State['lasttag'] = 'connector'
-    
+
         # and that we expect a description to be next.
-    
+
         State['nexttag'] = 'description'
-    
+
         # Get the attribute values we should have
-    
+
         Id = Elem.get('id')
-    
+
         Type = Elem.get('type')
-    
+
         Name = Elem.get('name')
-    
+
         if Id == None:
-    
-            Errors.append('Error 39: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector has no id\n'.format(str(InFile), str(Elem.sourceline)))
-    
+
+            Errors.append('Error 39: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector has no id\n'.format(
+                str(InFile), str(Elem.sourceline)))
+
             # give it a bogus value so it has one.
-    
+
             Id = 'none'
-        
+
         elif Id in FzpDict:
-    
+
             # If it is a dup, error!
-    
+
             DupNameError(InFile, Id, Elem, Errors)
-    
+
         else:
-    
+
             # else mark it as seen
-    
+
             FzpDict[Id] = Id
 
             # and note that we have seen this pin number. To get the number
@@ -2286,8 +2525,8 @@ def FzpProcessConnectorsTs4(InFile, Elem, Errors, Warnings, Info, FzpDict, TagSt
 
             if 'pinnos' in FzpDict:
 
-                # The entry already exists so append this pin number to the 
-                # list. 
+                # The entry already exists so append this pin number to the
+                # list.
 
                 FzpDict['pinnos'].append(PinNo)
 
@@ -2298,105 +2537,116 @@ def FzpProcessConnectorsTs4(InFile, Elem, Errors, Warnings, Info, FzpDict, TagSt
                 FzpDict['pinnos'] = [PinNo]
 
             # End of if 'pinnos' in FzpDict:
-    
+
         # End of if Id == None:
-    
-        # Create an entry with unique prefix 'connectorx.id.bus so bus 
-        # checking won't match svg terminal or leg ids, only id entries. 
-        # Set it to itself so we know this isn't yet part of any bus during 
-        # bus processing later. 
-    
+
+        # Create an entry with unique prefix 'connectorx.id.bus so bus
+        # checking won't match svg terminal or leg ids, only id entries.
+        # Set it to itself so we know this isn't yet part of any bus during
+        # bus processing later.
+
         FzpDict[Id + '.id.bus'] = Id + '.id.bus'
 
         # Do the same for subparts so we are ready if buses and subparts can
         # ever coexist (they can't right now ...)
 
         FzpDict[Id + '.id.subpart'] = Id + '.id.subpart'
-    
-        # Set the id value in to State for later processing. 
-    
+
+        # Set the id value in to State for later processing.
+
         State['lastvalue'] = Id
-    
+
         if Name == None:
-    
-            Errors.append('Error 40: File\'n{0:s}\'\nAt line {1:s}\n\nConnector has no name\n'.format(str(InFile), str(elem.sourceline)))
-    
+
+            Errors.append('Error 40: File\'n{0:s}\'\nAt line {1:s}\n\nConnector has no name\n'.format(
+                str(InFile), str(elem.sourceline)))
+
             # give it a bogus value so it has one.
-    
+
             Name = 'none'
-    
+
         elif Name in FzpDict:
 
             # If it is a dup, warning if such warnings are enabled!
-    
-            logging.debug (' FzpProcessConnectorsTs4 source line %s Name %s  IssueNameDupWarning \'%s\'\n', Elem.sourceline, Name, IssueNameDupWarning)
 
-            if IssueNameDupWarning == 'y': 
+            logging.debug(' FzpProcessConnectorsTs4 source line %s Name %s  IssueNameDupWarning \'%s\'\n',
+                          Elem.sourceline, Name, IssueNameDupWarning)
+
+            if IssueNameDupWarning == 'y':
 
                 DupNameWarning(InFile, Name, Elem, Warnings)
 
-            # End of if IssueNameDupWarning == 'y': 
-    
+            # End of if IssueNameDupWarning == 'y':
+
         else:
-    
+
             # else mark it as seen
-    
+
             FzpDict[Name] = Name
-    
+
         # End of if Name == None:
-    
+
         # record the name in the dictionary
-    
+
         FzpDict[Id + '.name'] = Name
-    
-        logging.debug (' FzpProcessConnectorsTs4 source line %s Tag %s Id %s Type %s Name %s\n', Elem.sourceline, Tag, Id, Type, Name)
-    
+
+        logging.debug(' FzpProcessConnectorsTs4 source line %s Tag %s Id %s Type %s Name %s\n',
+                      Elem.sourceline, Tag, Id, Type, Name)
+
         if Type != 'male' and not 'notmalewarning' in State and not'breadboardfzp' in State:
 
-            # If this isn't a breadboard file (which has hundreds of female 
-            # connectors) give a warning. 
-    
-            Warnings.append('Warning 11: File\n\'{0:s}\'\nAt line {1:s}\n\nType {2:s} is not male (it usually should be)\n'.format(str(InFile), str(Elem.sourceline), str(Type)))
+            # If this isn't a breadboard file (which has hundreds of female
+            # connectors) give a warning.
+
+            Warnings.append('Warning 11: File\n\'{0:s}\'\nAt line {1:s}\n\nType {2:s} is not male (it usually should be)\n'.format(
+                str(InFile), str(Elem.sourceline), str(Type)))
 
             # Note we have output this warning so we don't repeat it.
 
             State['notmalewarning'] = 'y'
-    
-        # End of if Type != 'male' and not 'notmalewarning' in State and not'breadboardfzp' in State:
-            
-        if Type == None:
-    
-            # If not flag an error as it must have one.
-    
-            Errors.append('Error 41: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector {2:s} has no type\n'.format(str(InFile), str(Elem.sourceline), str(Id)))
-    
-            # then assign it a bogus value so it has one. 
-    
-            Type = 'none'
-    
-        # End of if Type == None:
-    
-        # Record the connector type indexed by connector name
-    
-        FzpDict[Id + '.type'] = Type
-    
-        logging.info (' Exiting FzpProcessConnectorsTs4\n')
 
-    # end of if Tag == None or not Tag in ['connector', 'description', 'views', 'breadboardView', 'p', 'schematicView', 'pcbView']:
-    
-# End of FzpProcessConnectorsTs4(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
+        # End of if Type != 'male' and not 'notmalewarning' in State and
+        # not'breadboardfzp' in State:
+
+        if Type == None:
+
+            # If not flag an error as it must have one.
+
+            Errors.append('Error 41: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector {2:s} has no type\n'.format(
+                str(InFile), str(Elem.sourceline), str(Id)))
+
+            # then assign it a bogus value so it has one.
+
+            Type = 'none'
+
+        # End of if Type == None:
+
+        # Record the connector type indexed by connector name
+
+        FzpDict[Id + '.type'] = Type
+
+        logging.info(' Exiting FzpProcessConnectorsTs4\n')
+
+    # end of if Tag == None or not Tag in ['connector', 'description',
+    # 'views', 'breadboardView', 'p', 'schematicView', 'pcbView']:
+
+# End of FzpProcessConnectorsTs4(InFile, Elem, Errors, Warnings, Info,
+# FzpDict, TagStack, State, Level):
+
 
 def FzpProcessConnectorsTs5(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
 
-    logging.info (' Entering FzpProcessConnectorsTs5 Level %s source line %s\n', Level, Elem.sourceline)
+    logging.info(
+        ' Entering FzpProcessConnectorsTs5 Level %s source line %s\n', Level, Elem.sourceline)
 
-    logging.debug (' FzpProcessConnectorsTs5: Entry TagStack %s State %s\n', TagStack, State)
+    logging.debug(
+        ' FzpProcessConnectorsTs5: Entry TagStack %s State %s\n', TagStack, State)
 
     # Set the value of Tag from Elem (because spice tags won't be on the stack)
 
     Tag = Elem.tag
 
-    logging.debug (' FzpProcessConnectorsTs5: initial Tag %s\n', Tag)
+    logging.debug(' FzpProcessConnectorsTs5: initial Tag %s\n', Tag)
 
     # Since we can have spice data inserted here, check the tag to see if it
     # is one we are willing to deal with. If not read on discarding and warning
@@ -2406,66 +2656,77 @@ def FzpProcessConnectorsTs5(InFile, Elem, Errors, Warnings, Info, FzpDict, TagSt
 
         # Assume this is spice data, but warn about it in case it is a typo
 
-        logging.debug (' FzpProcessConnectorsTs5: assuming Tag %s is spice data\n', Tag)
+        logging.debug(
+            ' FzpProcessConnectorsTs5: assuming Tag %s is spice data\n', Tag)
 
-        Warnings.append('Warning: File\n\'{0:s}\'\nAt line {1:s}\n\nTag {2:s}\nis not recognized and assumed to be spice data which is ignored\n(but it might also be a typo, thus this warning)\n'.format(str(InFile), str(Elem.sourceline), str(Tag)))
-         
+        Warnings.append('Warning: File\n\'{0:s}\'\nAt line {1:s}\n\nTag {2:s}\nis not recognized and assumed to be spice data which is ignored\n(but it might also be a typo, thus this warning)\n'.format(
+            str(InFile), str(Elem.sourceline), str(Tag)))
+
         # leave the state variables as is until we find something we recognize.
 
     else:
-    
+
         # Set Id from State['lastvalue']
-    
+
         Id = State['lastvalue']
-    
-        # We should now have either description or views so check what we 
-        # expect and then what we actually have. 
-    
+
+        # We should now have either description or views so check what we
+        # expect and then what we actually have.
+
         if State['nexttag'] != 'description' and State['nexttag'] != 'views':
-    
-            Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, expected tag \'description\' or \'views\' not {2:s}\n'.format(str(InFile), str(Elem.sourceline), str(State['nexttag'])))
-    
-        # End of if State['nexttag'] != 'description' and State['nexttag'] != 'views':
-        if  Tag == 'description':
-    
-            # All we need to do is set up the last and next tags. 
-    
+
+            Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, expected tag \'description\' or \'views\' not {2:s}\n'.format(
+                str(InFile), str(Elem.sourceline), str(State['nexttag'])))
+
+        # End of if State['nexttag'] != 'description' and State['nexttag'] !=
+        # 'views':
+        if Tag == 'description':
+
+            # All we need to do is set up the last and next tags.
+
             State['lasttag'] = 'description'
-    
+
             State['nexttag'] = 'views'
-    
+
         elif Tag == 'views':
-    
+
             # All we need to do is check the last tag was 'description' then
             # set up the last and next tags.
-    
+
             if State['lasttag'] != 'description':
-                
-                Errors.append('Error 42: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector {2:s} has no description\n'.format(str(InFile), str(Elem.sourceline), str(Id)))
-    
+
+                Errors.append('Error 42: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector {2:s} has no description\n'.format(
+                    str(InFile), str(Elem.sourceline), str(Id)))
+
             # End of if State['lasttag'] != 'description':
-    
+
             State['lastag'] = 'views'
-    
+
             State['nexttag'] = 'viewname'
-    
+
         else:
-    
-            Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, connector {2:s}, expected tag \'description\' or \'views\' got {3:s}\n'.format(str(InFile), str(Elem.sourceline), str(Id), str(Tag)))
-    
+
+            Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, connector {2:s}, expected tag \'description\' or \'views\' got {3:s}\n'.format(
+                str(InFile), str(Elem.sourceline), str(Id), str(Tag)))
+
         # End of if Tag == 'description':
-    
-    # End of if not Tag in ['connector', 'description', 'views', 'breadboardView', 'p', 'schematicView', 'pcbView']:
 
-    logging.info (' Exiting FzpProcessConnectorsTs5\n')
+    # End of if not Tag in ['connector', 'description', 'views',
+    # 'breadboardView', 'p', 'schematicView', 'pcbView']:
 
-#End of FzpProcessConnectorsTs5(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
+    logging.info(' Exiting FzpProcessConnectorsTs5\n')
+
+# End of FzpProcessConnectorsTs5(InFile, Elem, Errors, Warnings, Info,
+# FzpDict, TagStack, State, Level):
+
 
 def FzpProcessConnectorsTs6(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
 
-    logging.info (' Entering FzpProcessConnectorsTs6 Level %s source line %s\n', Level, Elem.sourceline)
+    logging.info(
+        ' Entering FzpProcessConnectorsTs6 Level %s source line %s\n', Level, Elem.sourceline)
 
-    logging.debug (' FzpProcessConnectorsTs6: Entry TagStack %s State %s\n', TagStack, State)
+    logging.debug(
+        ' FzpProcessConnectorsTs6: Entry TagStack %s State %s\n', TagStack, State)
 
     # Set the value of Tag from the TagStack
 
@@ -2479,28 +2740,32 @@ def FzpProcessConnectorsTs6(InFile, Elem, Errors, Warnings, Info, FzpDict, TagSt
 
     if Tag == 'p':
 
-        Errors.append('Error 43: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector {2:s} missing viewname\n'.format(str(InFile), str(Elem.sourceline), str(Id)))
-   
+        Errors.append('Error 43: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector {2:s} missing viewname\n'.format(
+            str(InFile), str(Elem.sourceline), str(Id)))
+
         State['lasttag'] = 'viewname'
 
-        State['nexttag'] = 'p' 
+        State['nexttag'] = 'p'
 
     elif State['nexttag'] != 'p' and State['nexttag'] != 'viewname':
 
-        Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, connector {2:s}, expected \'p\' or \'viewname\' got {3:s}\n'.format(str(InFile), str(Elem.sourceline), str(Id), str(State['nexttag'])))
+        Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, connector {2:s}, expected \'p\' or \'viewname\' got {3:s}\n'.format(
+            str(InFile), str(Elem.sourceline), str(Id), str(State['nexttag'])))
 
         # It is unclear what State should be so leave it as is which will
         # likely cause an error cascade, but we have flagged the first one.
 
     else:
 
-        # We look to have a view name so process it. 
+        # We look to have a view name so process it.
 
         if Tag not in ['breadboardView', 'schematicView', 'pcbView']:
 
-            logging.debug (' ProcessConnectorsTs6 source line %s Append invalid tag error Tag %s TagStack %s State %s\n', Elem.sourceline, Tag, TagStack, State)
+            logging.debug(' ProcessConnectorsTs6 source line %s Append invalid tag error Tag %s TagStack %s State %s\n',
+                          Elem.sourceline, Tag, TagStack, State)
 
-            Errors.append('Error 44: File\n\'{0:s}\'\nAt line {1:s}\n\nViewname {2:s} invalid (typo?)\n'.format(str(InFile), str(Elem.sourceline), str(Tag)))
+            Errors.append('Error 44: File\n\'{0:s}\'\nAt line {1:s}\n\nViewname {2:s} invalid (typo?)\n'.format(
+                str(InFile), str(Elem.sourceline), str(Tag)))
 
         else:
 
@@ -2516,18 +2781,22 @@ def FzpProcessConnectorsTs6(InFile, Elem, Errors, Warnings, Info, FzpDict, TagSt
 
     # End of if Tag == 'p':
 
-    logging.debug (' FzpProcessConnectorsTs6: Exit TagStack %s State %s\n', TagStack, State)
+    logging.debug(
+        ' FzpProcessConnectorsTs6: Exit TagStack %s State %s\n', TagStack, State)
 
-    logging.info (' Exiting FzpProcessConnectorsTs6\n')
+    logging.info(' Exiting FzpProcessConnectorsTs6\n')
 
-# End of def FzpProcessConnectorsTs6(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
+# End of def FzpProcessConnectorsTs6(InFile, Elem, Errors, Warnings, Info,
+# FzpDict, TagStack, State, Level):
 
 
 def FzpProcessConnectorsTs7(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
 
-    logging.info (' Entering FzpProcessConnectorsTs7 Level %s source line %s\n', Level, Elem.sourceline)
+    logging.info(
+        ' Entering FzpProcessConnectorsTs7 Level %s source line %s\n', Level, Elem.sourceline)
 
-    logging.debug (' FzpProcessConnectorsTs7: Entry TagStack %s State %s\n', TagStack, State)
+    logging.debug(
+        ' FzpProcessConnectorsTs7: Entry TagStack %s State %s\n', TagStack, State)
 
     # Set the value of Tag from the TagStack
 
@@ -2541,23 +2810,25 @@ def FzpProcessConnectorsTs7(InFile, Elem, Errors, Warnings, Info, FzpDict, TagSt
 
     if not State['nexttag'] == 'p':
 
-        # expected state doesn't match. 
+        # expected state doesn't match.
 
-        logging.debug (' FzpProcessConnectorsTs7 source line %s State[\'nexttag\'] %s isn\'t \'p\'\n', Elem.sourceline, State['nexttag'])
+        logging.debug(
+            ' FzpProcessConnectorsTs7 source line %s State[\'nexttag\'] %s isn\'t \'p\'\n', Elem.sourceline, State['nexttag'])
 
-        Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, expected tag \'p\' got {2:s}\n'.format(str(InFile), str(Elem.sourceline), str(State['nexttag'])))
+        Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, expected tag \'p\' got {2:s}\n'.format(
+            str(InFile), str(Elem.sourceline), str(State['nexttag'])))
 
         # unclear what State should be so leave as is which may cause an
-        # error cascade. 
+        # error cascade.
 
     else:
 
         if Tag == 'p':
 
-            # We have found a 'p' line which means we have the associated 
-            # view id on the tag stack and need to add the connector names 
-            # to the dictionary for use checking the pins in the svgs 
-            # later.  
+            # We have found a 'p' line which means we have the associated
+            # view id on the tag stack and need to add the connector names
+            # to the dictionary for use checking the pins in the svgs
+            # later.
 
             # Get the viewname from the TagStack.
 
@@ -2565,7 +2836,7 @@ def FzpProcessConnectorsTs7(InFile, Elem, Errors, Warnings, Info, FzpDict, TagSt
 
             View = StackTag
 
-            logging.debug (' FzpProcessConnectorsTs7 View set to %s\n', View)
+            logging.debug(' FzpProcessConnectorsTs7 View set to %s\n', View)
 
             # We need a layer value (even if it is None) for the index.
 
@@ -2575,49 +2846,55 @@ def FzpProcessConnectorsTs7(InFile, Elem, Errors, Warnings, Info, FzpDict, TagSt
 
                 Layer = 'none'
 
-                logging.debug (' FzpProcessConnectorsTs7 source line %s missing layer\n', Elem.sourceline)
+                logging.debug(
+                    ' FzpProcessConnectorsTs7 source line %s missing layer\n', Elem.sourceline)
 
-                Errors.append('Error 45: File\n\'{0:s}\'\nAt line {1:s}\n\nLayer missing\n'.format(str(InFile), str(Elem.sourceline)))
+                Errors.append('Error 45: File\n\'{0:s}\'\nAt line {1:s}\n\nLayer missing\n'.format(
+                    str(InFile), str(Elem.sourceline)))
 
             # End of if Layer == None:
 
-            # Verify the layerId is correct. 
+            # Verify the layerId is correct.
 
-            if not View  + '.' + 'LayerId' in FzpDict:
+            if not View + '.' + 'LayerId' in FzpDict:
 
                 # Don't have a layerId for this view!
 
-                Errors.append('Error 46: File\n\'{0:s}\'\nAt line {1:s}\n\nNo layerId for View {2:s}\n'.format(str(InFile), str(Elem.sourceline), str(View)))
+                Errors.append('Error 46: File\n\'{0:s}\'\nAt line {1:s}\n\nNo layerId for View {2:s}\n'.format(
+                    str(InFile), str(Elem.sourceline), str(View)))
 
-            elif View != 'pcbView' and Layer != FzpDict[View  + '.' + 'LayerId']:
+            elif View != 'pcbView' and Layer != FzpDict[View + '.' + 'LayerId']:
 
                 # For all except pcbView, the layerIds don't match.
 
-                Errors.append('Error 47: File\n\'{0:s}\'\nAt line {1:s}\n\nLayerId {2:s} doesn\'t match View {3:s} layerId {4:s}\n'.format(str(InFile), str(Elem.sourceline), str(Layer), str(View), str(FzpDict[View  + '.' + 'LayerId'])))
+                Errors.append('Error 47: File\n\'{0:s}\'\nAt line {1:s}\n\nLayerId {2:s} doesn\'t match View {3:s} layerId {4:s}\n'.format(
+                    str(InFile), str(Elem.sourceline), str(Layer), str(View), str(FzpDict[View + '.' + 'LayerId'])))
 
             elif View == 'pcbView':
 
-                if  not Layer in FzpDict[View  + '.' + 'LayerId']:
+                if not Layer in FzpDict[View + '.' + 'LayerId']:
 
                     # Layer isn't a valid layer for pcbView.
 
-                    Errors.append('Error 47: File\n\'{0:s}\'\nAt line {1:s}\n\nLayerId {2:s} doesn\'t match any in View {3:s} layerIds {4:s}\n'.format(str(InFile), str(Elem.sourceline), str(Layer), str(View), str(FzpDict[View  + '.' + 'LayerId'])))
+                    Errors.append('Error 47: File\n\'{0:s}\'\nAt line {1:s}\n\nLayerId {2:s} doesn\'t match any in View {3:s} layerIds {4:s}\n'.format(
+                        str(InFile), str(Elem.sourceline), str(Layer), str(View), str(FzpDict[View + '.' + 'LayerId'])))
 
                 elif Layer == 'copper0':
 
-                    # While multiple layers are allowed, only copper0 and 
+                    # While multiple layers are allowed, only copper0 and
                     # copper1 (if they exist) are allowed in connectors and
-                    # they must be unique. 
+                    # they must be unique.
 
                     if Id + '.' + Layer in FzpDict:
 
-                        # Not unique so error. 
+                        # Not unique so error.
 
-                        Errors.append('Error 48: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector {2:s} layer {3:s} already defined, must be unique\n'.format(str(InFile), str(Elem.sourceline), str(Id), str(Layer)))
+                        Errors.append('Error 48: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector {2:s} layer {3:s} already defined, must be unique\n'.format(
+                            str(InFile), str(Elem.sourceline), str(Id), str(Layer)))
 
                     else:
-    
-                        # It is unique so note that we have seen it now. 
+
+                        # It is unique so note that we have seen it now.
 
                         FzpDict[Id + '.' + Layer] = 'y'
 
@@ -2625,19 +2902,20 @@ def FzpProcessConnectorsTs7(InFile, Elem, Errors, Warnings, Info, FzpDict, TagSt
 
                 elif Layer == 'copper1':
 
-                    # While multiple layers are allowed, only copper0 and 
+                    # While multiple layers are allowed, only copper0 and
                     # copper1 (if they exist) are allowed in connectors and
-                    # they must be unique. 
+                    # they must be unique.
 
                     if Id + '.' + Layer in FzpDict:
 
-                        # Not unique so error. 
+                        # Not unique so error.
 
-                        Errors.append('Error 48: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector {2:s} layer {3:s} already defined, must be unique\n'.format(str(InFile), str(Elem.sourceline), str(Id), str(Layer)))
+                        Errors.append('Error 48: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector {2:s} layer {3:s} already defined, must be unique\n'.format(
+                            str(InFile), str(Elem.sourceline), str(Id), str(Layer)))
 
                     else:
-    
-                        # It is unique so note that we have seen it now. 
+
+                        # It is unique so note that we have seen it now.
 
                         FzpDict[Id + '.' + Layer] = 'y'
 
@@ -2647,7 +2925,7 @@ def FzpProcessConnectorsTs7(InFile, Elem, Errors, Warnings, Info, FzpDict, TagSt
 
             # End of if not View  + '.' + 'LayerId' in FzpDict:
 
-            # Get the hybrid attribute if present (as it affects checking 
+            # Get the hybrid attribute if present (as it affects checking
             # below)
 
             Hybrid = Elem.get('hybrid')
@@ -2659,7 +2937,8 @@ def FzpProcessConnectorsTs7(InFile, Elem, Errors, Warnings, Info, FzpDict, TagSt
 
                 if Hybrid != 'yes':
 
-                    Errors.append('Error 49: File\n\'{0:s}\'\nAt line {1:s}\n\nhybrid is present but isn\'t \'yes\' but {2:s} (typo?)\n'.format(str(InFile), str(Elem.eline),str(Hybrid)))
+                    Errors.append('Error 49: File\n\'{0:s}\'\nAt line {1:s}\n\nhybrid is present but isn\'t \'yes\' but {2:s} (typo?)\n'.format(
+                        str(InFile), str(Elem.eline), str(Hybrid)))
 
                 else:
 
@@ -2675,14 +2954,14 @@ def FzpProcessConnectorsTs7(InFile, Elem, Errors, Warnings, Info, FzpDict, TagSt
 
             # End of if Hybrid != None:
 
-            logging.debug (' FzpProcessConnectorsTs7 Layer set to %s\n', Layer)
+            logging.debug(' FzpProcessConnectorsTs7 Layer set to %s\n', Layer)
 
-            # then get all the attributes and check their values as 
+            # then get all the attributes and check their values as
             # appropriate. Mark we haven't yet seen a svgid, terminalId or
-            # legId. A svgId is required and will cause an error, terminalId 
-            # will be warned about (becuase it is usually an error) in 
-            # schematicview and both a TerminalId and a LegId is an error, it 
-            # must be one or the other not both. 
+            # legId. A svgId is required and will cause an error, terminalId
+            # will be warned about (becuase it is usually an error) in
+            # schematicview and both a TerminalId and a LegId is an error, it
+            # must be one or the other not both.
 
             SvgIdSeen = 'n'
 
@@ -2692,15 +2971,18 @@ def FzpProcessConnectorsTs7(InFile, Elem, Errors, Warnings, Info, FzpDict, TagSt
 
             for Key in Elem.keys():
 
-                logging.debug (' FzpProcessConnectorsTs7: source line %s Tag %s Id %s Key %s\n', Elem.sourceline, Tag, Id, Key)
+                logging.debug(
+                    ' FzpProcessConnectorsTs7: source line %s Tag %s Id %s Key %s\n', Elem.sourceline, Tag, Id, Key)
 
                 if Key not in ['terminalId', 'svgId', 'layer', 'legId', 'hybrid']:
 
                     # Warn about a non standard key ...
 
-                    logging.debug (' FzpProcessConnectorsTs7 unknown key %s\n', Key)
+                    logging.debug(
+                        ' FzpProcessConnectorsTs7 unknown key %s\n', Key)
 
-                    Warnings.append('Warning 12: File\n\'{0:s}\'\nAt line {1:s}\n\nKey {2:s} is not recognized\n'.format(str(InFile), str(Elem.sourceline), str(Key)))
+                    Warnings.append('Warning 12: File\n\'{0:s}\'\nAt line {1:s}\n\nKey {2:s} is not recognized\n'.format(
+                        str(InFile), str(Elem.sourceline), str(Key)))
 
                 # End of if Key not in ['terminalId', 'svgId', 'layer', 'legId']:
                 # Now get the value of the key.
@@ -2709,7 +2991,8 @@ def FzpProcessConnectorsTs7(InFile, Elem, Errors, Warnings, Info, FzpDict, TagSt
 
                 if Key == None:
 
-                    Errors.append('Error 50: File\n\'{0:s}\'\nAt line {1:s}\n\nTag {2:s} is present but has no value\n'.format(str(InFile), str(Elem.sourceline),str(Key)))
+                    Errors.append('Error 50: File\n\'{0:s}\'\nAt line {1:s}\n\nTag {2:s} is present but has no value\n'.format(
+                        str(InFile), str(Elem.sourceline), str(Key)))
 
                 # End of if Key == None"
 
@@ -2717,8 +3000,8 @@ def FzpProcessConnectorsTs7(InFile, Elem, Errors, Warnings, Info, FzpDict, TagSt
 
                 if Key == 'svgId':
 
-                    # Note that we have seen an svgId tag (if the value is 
-                    # None, the error will have been noted above.) 
+                    # Note that we have seen an svgId tag (if the value is
+                    # None, the error will have been noted above.)
 
                     SvgIdSeen = 'y'
 
@@ -2726,22 +3009,21 @@ def FzpProcessConnectorsTs7(InFile, Elem, Errors, Warnings, Info, FzpDict, TagSt
 
                 if Key == 'terminalId':
 
-                    # Note that we have seen an terminalId tag (if the value 
-                    # is None, the error will have been noted above.) 
+                    # Note that we have seen an terminalId tag (if the value
+                    # is None, the error will have been noted above.)
 
                     TerminalIdSeen = 'y'
-            
+
                 # End of if Key == 'terminalId':
 
                 if Key == 'legId':
 
-                    # Note that we have seen an legId tag (if the value is 
-                    # None, the error will have been noted above.) 
+                    # Note that we have seen an legId tag (if the value is
+                    # None, the error will have been noted above.)
 
                     LegIdSeen = 'y'
 
                 # End of if Key == 'legId':
-            
 
                 if Key == 'layer':
 
@@ -2752,12 +3034,13 @@ def FzpProcessConnectorsTs7(InFile, Elem, Errors, Warnings, Info, FzpDict, TagSt
 
                     if View + '.layer' in FzpDict:
 
-                        # Already exists so append this one if it isn't 
+                        # Already exists so append this one if it isn't
                         # already present.
 
                         if not Layer in FzpDict[View + '.layer']:
 
-                            logging.debug (' FzpProcessConnectorsTs7: source line %s View %s layer %s added\n', Elem.sourceline, View, Layer)
+                            logging.debug(
+                                ' FzpProcessConnectorsTs7: source line %s View %s layer %s added\n', Elem.sourceline, View, Layer)
 
                             FzpDict[View + '.layer'].append(Layer)
 
@@ -2767,7 +3050,8 @@ def FzpProcessConnectorsTs7(InFile, Elem, Errors, Warnings, Info, FzpDict, TagSt
 
                         # Doesn't exist yet, so create it and add the layer.
 
-                        logging.debug (' FzpProcessConnectorsTs7: source line %s View %s, create and add layer %s added\n', Elem.sourceline, View, Layer)
+                        logging.debug(
+                            ' FzpProcessConnectorsTs7: source line %s View %s, create and add layer %s added\n', Elem.sourceline, View, Layer)
                         FzpDict[View + '.layer'] = [Layer]
 
                     # End of if View + '.layer' in FzpDict:
@@ -2777,44 +3061,46 @@ def FzpProcessConnectorsTs7(InFile, Elem, Errors, Warnings, Info, FzpDict, TagSt
                     # Key isn't layer so if it is a connector and Hybrid isn't
                     # set to 'yes' (in which case the connector will be ignored
                     # as this view is unused)
-                
+
                     if Key in ['terminalId', 'svgId', 'legId'] and Hybrid != 'yes':
 
                         # Check if it matches with the connector defined
-                
+
                         if not re.match(Id, Value):
 
                             # No, flag it as a warning, as it is unusual (but
                             # not illegal) and thus possibly an error.
- 
-                            logging.debug (' FzpProcessConnectorsTs7: Id %s doesn\'t match Value %s\n',Id, Value)
 
-                            Warnings.append('Warning 13: File\n\'{0:s}\'\nAt line {1:s}\n\nValue {2:s} doesn\'t match Id {3:s}. (Typo?)\n'.format(str(InFile), str(Elem.sourceline), str(Value), str(Id)))
+                            logging.debug(
+                                ' FzpProcessConnectorsTs7: Id %s doesn\'t match Value %s\n', Id, Value)
 
+                            Warnings.append('Warning 13: File\n\'{0:s}\'\nAt line {1:s}\n\nValue {2:s} doesn\'t match Id {3:s}. (Typo?)\n'.format(
+                                str(InFile), str(Elem.sourceline), str(Value), str(Id)))
 
                         # End of if not re.match(Id, Value):
 
                         # Now make sure this connector is unique in this view
-                        # and if it is add it to the list of connectors to 
+                        # and if it is add it to the list of connectors to
                         # verify is in the associated svg.
 
                         if not View + '.' + Value + '.' + Layer in FzpDict:
 
                             # This is one of the pin names and we haven't seen
-                            # it before, so add it to the connectors list for 
+                            # it before, so add it to the connectors list for
                             # matching in the svg. Indicate we have seen this
                             # connector (in case we see another)
 
                             FzpDict[View + '.' + Value + '.' + Layer] = 'y'
 
-                            # If the entry for this view doesn't exist yet, 
+                            # If the entry for this view doesn't exist yet,
                             # create it and add this connector to the list
                             # otherwise append the connector to the existing
-                            # list (weeding out duplicate . 
+                            # list (weeding out duplicate .
 
                             if not 'connectors.fzp.' + View in FzpDict:
-    
-                                logging.debug (' FzpProcessConnectorsTs7: create %s add %s\n','connectors.fzp.' + View, Value)
+
+                                logging.debug(
+                                    ' FzpProcessConnectorsTs7: create %s add %s\n', 'connectors.fzp.' + View, Value)
 
                                 # First connector so create the list.
 
@@ -2822,29 +3108,34 @@ def FzpProcessConnectorsTs7(InFile, Elem, Errors, Warnings, Info, FzpDict, TagSt
 
                             else:
 
-
-                                logging.debug (' FzpProcessConnectorsTs7: View %s conents %s\n','connectors.fzp.' + View, FzpDict['connectors.fzp.' + View])
+                                logging.debug(' FzpProcessConnectorsTs7: View %s conents %s\n',
+                                              'connectors.fzp.' + View, FzpDict['connectors.fzp.' + View])
 
                                 if not Value in FzpDict['connectors.fzp.' + View]:
 
                                     # For pcb view pins will appear twice, once
                                     # for copper0 and once for copper1, we only
-                                    # need one value so if it is already here 
+                                    # need one value so if it is already here
                                     # don't add a new one.
 
-                                    logging.debug (' FzpProcessConnectorsTs7: add %s add %s\n','connectors.fzp.' + View, Value)
+                                    logging.debug(
+                                        ' FzpProcessConnectorsTs7: add %s add %s\n', 'connectors.fzp.' + View, Value)
 
-                                    FzpDict['connectors.fzp.' + View].append(Value)
+                                    FzpDict['connectors.fzp.' +
+                                            View].append(Value)
 
-                                # End of if not Value in FzpDict['connectors.fzp.' + View]:
+                                # End of if not Value in
+                                # FzpDict['connectors.fzp.' + View]:
 
-                            # End of if not 'connectors.fzp.' + View in FzpDict:
+                            # End of if not 'connectors.fzp.' + View in
+                            # FzpDict:
 
-                        # End of if not View + '.' + Value + '.' + Layer in FzpDict:
+                        # End of if not View + '.' + Value + '.' + Layer in
+                        # FzpDict:
 
                         if View == 'schematicView':
 
-                            # This is schematic view, so in case this is a 
+                            # This is schematic view, so in case this is a
                             # subpart, associate the pins with the connectorId
 
                             if not 'schematic.' + Id in FzpDict:
@@ -2859,7 +3150,8 @@ def FzpProcessConnectorsTs7(InFile, Elem, Errors, Warnings, Info, FzpDict, TagSt
 
                         # End of if View == 'schematicView':
 
-                    # End of if Key in ['terminalId', 'svgId', 'legId'] and Hybrid != 'yes':
+                    # End of if Key in ['terminalId', 'svgId', 'legId'] and
+                    # Hybrid != 'yes':
 
                 # End of if Key == 'layer':
 
@@ -2869,43 +3161,50 @@ def FzpProcessConnectorsTs7(InFile, Elem, Errors, Warnings, Info, FzpDict, TagSt
             # complained about a missing layer above so only do svgId and if
             # view is schematicview, terminalId as a warning, here.TerminalId
             # and legId are optional although no terminalId is usually an error
-            # in schematic, only svgId is required, but if hybrid is 'yes' 
+            # in schematic, only svgId is required, but if hybrid is 'yes'
             # even that is optional. However both a terminalId and a legID are
-            # an error so note that. 
+            # an error so note that.
 
             if TerminalIdSeen == 'y' and LegIdSeen == 'y':
 
-                Errors.append('Error 80: File\n\'{0:s}\'\nAt line {1:s}\n\nBoth terminalId and legId present, only one or the other is allowed.\n'.format(str(InFile), str(Elem.sourceline)))
+                Errors.append('Error 80: File\n\'{0:s}\'\nAt line {1:s}\n\nBoth terminalId and legId present, only one or the other is allowed.\n'.format(
+                    str(InFile), str(Elem.sourceline)))
 
             # End of if TerminalIdSeen == 'y' and LegIdSeen == 'y':
 
             if SvgIdSeen != 'y' and Hybrid != 'yes':
 
-                Errors.append('Error 51: File\n\'{0:s}\'\nAt line {1:s}\n\nsvgId missing\n'.format(str(InFile), str(Elem.sourceline)))
-         
+                Errors.append('Error 51: File\n\'{0:s}\'\nAt line {1:s}\n\nsvgId missing\n'.format(
+                    str(InFile), str(Elem.sourceline)))
+
             # End of if SvgIdSeen != 'y' and Hybrid != 'yes':
 
             if TerminalIdSeen != 'y' and View == 'schematicView' and Hybrid != 'yes':
-                Warnings.append('Warning 14: File\n\'{0:s}\'\nAt line {1:s}\n\nterminalId missing in schematicView (likely an error)\n'.format(str(InFile), str(Elem.sourceline)))
+                Warnings.append('Warning 14: File\n\'{0:s}\'\nAt line {1:s}\n\nterminalId missing in schematicView (likely an error)\n'.format(
+                    str(InFile), str(Elem.sourceline)))
 
-            # End of if TerminalIdSeen != 'y' and View == 'schematicview' and Hybrid != 'yes':
+            # End of if TerminalIdSeen != 'y' and View == 'schematicview' and
+            # Hybrid != 'yes':
 
         # End of if Tag == 'p':
 
     # End of if not State['nexttag'] == 'p':
 
-    logging.debug (' Exiting FzpProcessConnectorsTs7: source line %s tag %s attrib %s TagStack %s State %s\n', Elem.sourceline, Elem.tag, Elem.attrib, TagStack, State)
+    logging.debug(' Exiting FzpProcessConnectorsTs7: source line %s tag %s attrib %s TagStack %s State %s\n',
+                  Elem.sourceline, Elem.tag, Elem.attrib, TagStack, State)
 
-    logging.info (' Exiting FzpProcessConnectorsTs7\n')
+    logging.info(' Exiting FzpProcessConnectorsTs7\n')
 
-# End of FzpProcessConnectorsTs7(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
+# End of FzpProcessConnectorsTs7(InFile, Elem, Errors, Warnings, Info,
+# FzpDict, TagStack, State, Level):
+
 
 def FzpProcessBusTs3(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
 
-    logging.info (' Entering FzpProcessBusTs3 Level %s\n', Level)
+    logging.info(' Entering FzpProcessBusTs3 Level %s\n', Level)
 
-    # TagStack length of 3 ('empty', 'module', 'buses') is what tripped the 
-    # call to this routine so we start processing at TagStack length 3 in this 
+    # TagStack length of 3 ('empty', 'module', 'buses') is what tripped the
+    # call to this routine so we start processing at TagStack length 3 in this
     # case statement which trips when it finds the correct state (or complains
     # if it finds an incorrect state due to errors.)
 
@@ -2913,40 +3212,49 @@ def FzpProcessBusTs3(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, St
 
         # Go and process the TagStack level 4 stuff (bus for the bus id)
 
-        FzpProcessBusTs4(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level)
+        FzpProcessBusTs4(InFile, Elem, Errors, Warnings, Info,
+                         FzpDict, TagStack, State, Level)
 
     elif len(TagStack) == 5:
 
         # Go and process the TagStack level 5 stuff (nodeMembers)
 
-        FzpProcessBusTs5(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level)
+        FzpProcessBusTs5(InFile, Elem, Errors, Warnings, Info,
+                         FzpDict, TagStack, State, Level)
 
     elif len(TagStack) > 5:
 
-        # There shouldn't be anything past 5th level so something is wrong. 
+        # There shouldn't be anything past 5th level so something is wrong.
 
-        Errors.append('Error 38: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, tag stack is at level {2:s} and should only go to level 5\n\nTag {3:s} will be ignored\n'.format(str(InFile), str(Elem.sourceline), str(len(TagStack)), str(Tag)))
+        Errors.append('Error 38: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, tag stack is at level {2:s} and should only go to level 5\n\nTag {3:s} will be ignored\n'.format(
+            str(InFile), str(Elem.sourceline), str(len(TagStack)), str(Tag)))
 
     # End of if len(TagStack) == 4:
-    
-    logging.info (' Exiting FzpProcessBusTs3 Level %s\n', Level)
 
-# End of def FzpProcessBusTs3(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
+    logging.info(' Exiting FzpProcessBusTs3 Level %s\n', Level)
+
+# End of def FzpProcessBusTs3(InFile, Elem, Errors, Warnings, Info,
+# FzpDict, TagStack, State, Level):
+
 
 def FzpProcessBusTs4(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
 
-    logging.info (' Entering FzpProcessBusTs4 level %s source line %s\n', Level, Elem.sourceline)
+    logging.info(
+        ' Entering FzpProcessBusTs4 level %s source line %s\n', Level, Elem.sourceline)
 
-    logging.debug (' FzpProcessBusTs4: Entry TagStack %s State %s\n', TagStack, State)
+    logging.debug(
+        ' FzpProcessBusTs4: Entry TagStack %s State %s\n', TagStack, State)
 
     if not State['lasttag'] in ['buses', 'bus', 'nodeMember']:
 
-        logging.debug (' FzpProcessBusTs4:  Unexpected state %s expected buses or nodeMember\n',State['lasttag'])
+        logging.debug(
+            ' FzpProcessBusTs4:  Unexpected state %s expected buses or nodeMember\n', State['lasttag'])
 
-        # Not the expected state possibly a missing line. 
+        # Not the expected state possibly a missing line.
 
-        Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, expected lasttag \'buses\' or \'nodeMember\' not {2:s}\n(Missing line?)\n'.format(str(InFile), str(Elem.sourceline), str(State['lasttag'])))
-        
+        Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, expected lasttag \'buses\' or \'nodeMember\' not {2:s}\n(Missing line?)\n'.format(
+            str(InFile), str(Elem.sourceline), str(State['lasttag'])))
+
     # End of if not State['lasttag'] in ['buses', 'nodeMember']:
 
     StackTag, StackLevel = TagStack[len(TagStack) - 1]
@@ -2955,16 +3263,18 @@ def FzpProcessBusTs4(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, St
 
     if Tag != 'bus':
 
-        logging.debug (' FzpProcessBusTs4:  Unexpected Tag %s expected bus\n', Tag)
+        logging.debug(
+            ' FzpProcessBusTs4:  Unexpected Tag %s expected bus\n', Tag)
 
-        Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, expected tag \'bus\' not {2:s}. (Missing line?)\n'.format(str(InFile), str(Elem.sourceline), str(Tag)))
-        
+        Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, expected tag \'bus\' not {2:s}. (Missing line?)\n'.format(
+            str(InFile), str(Elem.sourceline), str(Tag)))
+
         # it is unclear what state should be so leave it as is which may cause
         # an error cascade ...
 
     else:
 
-        # We look to have a bus line so get the bus id. 
+        # We look to have a bus line so get the bus id.
 
         Id = Elem.get('id')
 
@@ -2977,52 +3287,55 @@ def FzpProcessBusTs4(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, St
 
             FzpDict['empty_bus_defined'] = 'y'
 
-            Warnings.append('Warning 15: File:\n\'{0:s}\'\nAt line {1:s}\n\nEmpty bus definition, no id (remove?)\n'.format(str(InFile), str(Elem.sourceline)))
+            Warnings.append('Warning 15: File:\n\'{0:s}\'\nAt line {1:s}\n\nEmpty bus definition, no id (remove?)\n'.format(
+                str(InFile), str(Elem.sourceline)))
 
-        else:            
+        else:
 
-            # and note we have seen a bus (not just the buses tag) for subparts 
-            # but we haven't put out an error message for it yet if there is a 
-            # sub parts definition later, we will. 
+            # and note we have seen a bus (not just the buses tag) for subparts
+            # but we haven't put out an error message for it yet if there is a
+            # sub parts definition later, we will.
 
             FzpDict['bus_defined'] = 'n'
 
-            logging.debug (' FzpProcessBusTs4: source line %s Tag %s Id %s State %s\n', Elem.sourceline, Tag, Id, State)
+            logging.debug(' FzpProcessBusTs4: source line %s Tag %s Id %s State %s\n',
+                          Elem.sourceline, Tag, Id, State)
 
             if Id + '.bus_seen' in FzpDict:
-    
+
                 # Not unique error
-    
+
                 DupNameError(InFile, Id, Elem, Errors)
-    
+
             else:
-    
-                logging.debug (' FzpProcessBusTs4: Marked Id %s seen\n', Id)
-    
-                # else mark it as seen 
-    
+
+                logging.debug(' FzpProcessBusTs4: Marked Id %s seen\n', Id)
+
+                # else mark it as seen
+
                 FzpDict[Id + '.bus_seen'] = Id
-    
+
             # End of if Id + '.bus_seen' in FzpDict:
-    
+
         # End of Id == None:
 
         # Set the bus id even if it is None, so we don't impact the last bus
-        # with the current information. 
+        # with the current information.
 
         State['lastvalue'] = Id
 
         if (Id + '.bus') in FzpDict:
 
-            logging.debug (' FzpProcessBusTs4: Id %s already exists\n', Id)
+            logging.debug(' FzpProcessBusTs4: Id %s already exists\n', Id)
 
             # If we already have this bus id flag an error.
 
-            Errors.append('Error 52: File\n\'{0:s}\'\nAt line {1:s}\n\nBus {2:s} already defined\n'.format(str(InFile), str(Elem.sourceline), str(Id)))
+            Errors.append('Error 52: File\n\'{0:s}\'\nAt line {1:s}\n\nBus {2:s} already defined\n'.format(
+                str(InFile), str(Elem.sourceline), str(Id)))
 
         else:
 
-            logging.debug (' FzpProcessBusTs4: created counter for Id %s\n', Id)
+            logging.debug(' FzpProcessBusTs4: created counter for Id %s\n', Id)
 
             # mark this as a bus currently with no nodes.
 
@@ -3036,22 +3349,28 @@ def FzpProcessBusTs4(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, St
 
         State['nexttag'] = 'nodeMember'
 
-        logging.debug ('  FzpProcessBusTs4: source line %s end of bus Id %s State %s\n', Elem.sourceline, Id, State)
+        logging.debug(
+            '  FzpProcessBusTs4: source line %s end of bus Id %s State %s\n', Elem.sourceline, Id, State)
 
     # End of if Tag != 'bus':
 
-    logging.info (' Exiting FzpProcessBusTs4 level %s source line %s\n', Level, Elem.sourceline)
+    logging.info(
+        ' Exiting FzpProcessBusTs4 level %s source line %s\n', Level, Elem.sourceline)
 
-# End of def FzpProcessBusTs4(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
+# End of def FzpProcessBusTs4(InFile, Elem, Errors, Warnings, Info,
+# FzpDict, TagStack, State, Level):
+
 
 def FzpProcessBusTs5(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
 
-    logging.info (' Entering FzpProcessBusTs5 level %s source line %s\n', Level, Elem.sourceline)
+    logging.info(
+        ' Entering FzpProcessBusTs5 level %s source line %s\n', Level, Elem.sourceline)
 
-    logging.debug (' FzpProcessBusTs5: Entry TagStack %s State %s\n', TagStack, State)
+    logging.debug(
+        ' FzpProcessBusTs5: Entry TagStack %s State %s\n', TagStack, State)
 
-    # At this point we set the last Id we saw from State and Tag from the 
-    # TagStack. 
+    # At this point we set the last Id we saw from State and Tag from the
+    # TagStack.
 
     Id = State['lastvalue']
 
@@ -3061,77 +3380,89 @@ def FzpProcessBusTs5(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, St
 
     if not State['nexttag'] in ['bus', 'nodeMember']:
 
-        logging.debug (' FzpProcessBusTs5:  Unexpected state %s expected bus or nodeMember\n',State['nexttag'])
+        logging.debug(
+            ' FzpProcessBusTs5:  Unexpected state %s expected bus or nodeMember\n', State['nexttag'])
 
         # State isn't what we expected, error
 
-        Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, expected lasttag \'bus\' or \'nodeMember\' not {2:s}\n(Missing line?)\n'.format(str(InFile), str(Elem.sourceline), str(State['lasttag'])))
+        Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, expected lasttag \'bus\' or \'nodeMember\' not {2:s}\n(Missing line?)\n'.format(
+            str(InFile), str(Elem.sourceline), str(State['lasttag'])))
 
-    else:    
-    
+    else:
+
         if Tag == 'nodeMember':
-    
-            # Since Connector shouldn't be unique we don't need to check if 
+
+            # Since Connector shouldn't be unique we don't need to check if
             # it is.
-    
+
             Connector = Elem.get('connectorId')
-    
+
             if Connector != None:
-    
+
                 # Check if the connector exists
-    
+
                 if not Connector + '.id.bus' in FzpDict:
 
-                    logging.debug (' FzpProcessBusTs5:  Connector %s doesn\'t exist\n',Connector)
-    
+                    logging.debug(
+                        ' FzpProcessBusTs5:  Connector %s doesn\'t exist\n', Connector)
+
                     # No, flag an error.
-    
-                    Errors.append('Error 53: File\n\'{0:s}\'\nAt line {1:s}\n\nBus nodeMember {2:s} does\'t exist\n'.format(str(InFile), str(Elem.sourceline), str(Connector)))
-    
+
+                    Errors.append('Error 53: File\n\'{0:s}\'\nAt line {1:s}\n\nBus nodeMember {2:s} does\'t exist\n'.format(
+                        str(InFile), str(Elem.sourceline), str(Connector)))
+
                 else:
-    
-                    # Since we set the value as the key as a place holder 
-                    # intially, check if that is still true (i.e. this isn't 
-                    # part of another bus already). 
-    
+
+                    # Since we set the value as the key as a place holder
+                    # intially, check if that is still true (i.e. this isn't
+                    # part of another bus already).
+
                     if FzpDict[Connector + '.id.bus'] == FzpDict[Connector + '.id.bus']:
 
-                        logging.debug (' FzpProcessBusTs5: Connector %s added to bus %s\n',Connector, Id)
-    
-                        # connector not part of another bus so mark it as ours. 
-                        # by writing our bus Id in to it.
-    
-                        FzpDict[Connector + '.id.bus'] = Id
-    
-                    else:
-    
-                        # connector is already part of another bus, flag an error.
+                        logging.debug(
+                            ' FzpProcessBusTs5: Connector %s added to bus %s\n', Connector, Id)
 
-                        logging.debug (' FzpProcessBusTs5: connector %s already in another bus\n',Connector)
-    
-                        Errors.append('Error 54: File\n\'{0:s}\'\nAt line {1:s}\n\nBus nodeMember {2:s} already in bus {3:s}\n'.format(str(InFile), str(Elem.sourceline), str(Connector), str(FzpDict[Connector + '.id.bus'])))
-    
-                    # End of if FzpDict[connector + '.id.bus'] == FzpDict[connector + '.id.bus']:
-    
+                        # connector not part of another bus so mark it as ours.
+                        # by writing our bus Id in to it.
+
+                        FzpDict[Connector + '.id.bus'] = Id
+
+                    else:
+
+                        # connector is already part of another bus, flag an
+                        # error.
+
+                        logging.debug(
+                            ' FzpProcessBusTs5: connector %s already in another bus\n', Connector)
+
+                        Errors.append('Error 54: File\n\'{0:s}\'\nAt line {1:s}\n\nBus nodeMember {2:s} already in bus {3:s}\n'.format(
+                            str(InFile), str(Elem.sourceline), str(Connector), str(FzpDict[Connector + '.id.bus'])))
+
+                    # End of if FzpDict[connector + '.id.bus'] ==
+                    # FzpDict[connector + '.id.bus']:
+
                 # End of if not Connector + '.id.bus' in FzpDict:
-    
+
                 # Now increase the count of nodes in the bus by 1.
-    
+
                 FzpDict[Id + '.bus'] += 1
-    
+
             # End of if Connector != None:
-    
+
         # End of if Tag == 'nodeMember':
-    
+
     # End of if not State['nexttag'] in ['bus', 'nodeMember']:
 
-    logging.info (' Exiting FzpProcessBusTs5 level %s source line %s\n', Level, Elem.sourceline)
+    logging.info(
+        ' Exiting FzpProcessBusTs5 level %s source line %s\n', Level, Elem.sourceline)
 
-# End of def FzpProcessBusTs5(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
+# End of def FzpProcessBusTs5(InFile, Elem, Errors, Warnings, Info,
+# FzpDict, TagStack, State, Level):
+
 
 def FzpProcessSchematicPartsTs3(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
 
-    logging.info (' Entering FzpProcessSchematicPartsTs3 Level %s\n', Level)
+    logging.info(' Entering FzpProcessSchematicPartsTs3 Level %s\n', Level)
 
     StackTag, StackLevel = TagStack[len(TagStack) - 1]
 
@@ -3143,11 +3474,13 @@ def FzpProcessSchematicPartsTs3(InFile, Elem, Errors, Warnings, Info, FzpDict, T
 
         # Unexpected state error
 
-        Errors.append('Error: File\n\'{0:s}\'\nAt line {1:s}\n\nDuplicate tag in schematic-subparts\n'.format(str(InFile), str(Elem.sourceline)))
+        Errors.append('Error: File\n\'{0:s}\'\nAt line {1:s}\n\nDuplicate tag in schematic-subparts\n'.format(
+            str(InFile), str(Elem.sourceline)))
 
     # End of if Tag == 'schematic-subparts':
 
-    logging.debug (' FzpProcessSchematicPartsTs3: TagStack len %s Tag %s\n', len(TagStack), Tag)
+    logging.debug(
+        ' FzpProcessSchematicPartsTs3: TagStack len %s Tag %s\n', len(TagStack), Tag)
 
     # Process the data according to tag stack level.
 
@@ -3155,36 +3488,41 @@ def FzpProcessSchematicPartsTs3(InFile, Elem, Errors, Warnings, Info, FzpDict, T
 
         # Go and process the TagStack level 4 stuff (subpart id and label)
 
-        FzpProcessSchematicPartsTs4(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level)
+        FzpProcessSchematicPartsTs4(
+            InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level)
 
     elif len(TagStack) == 5:
 
         # Go and process the TagStack level 4 stuff (connectors)
 
-        FzpProcessSchematicPartsTs5(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level)
+        FzpProcessSchematicPartsTs5(
+            InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level)
 
     elif len(TagStack) == 6:
 
         # Go and process the TagStack level 5 stuff (connector)
 
-        FzpProcessSchematicPartsTs6(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level)
-
+        FzpProcessSchematicPartsTs6(
+            InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level)
 
     elif len(TagStack) > 6:
 
-        # There shouldn't be anything past 5th level so something is wrong. 
+        # There shouldn't be anything past 5th level so something is wrong.
 
-        Errors.append('Error 38: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, tag stack is at level {2:s} and should only go to level 6\n\nTag {3:s} will be ignored\n'.format(str(InFile), str(Elem.sourceline), str(len(TagStack)), str(Tag)))
+        Errors.append('Error 38: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, tag stack is at level {2:s} and should only go to level 6\n\nTag {3:s} will be ignored\n'.format(
+            str(InFile), str(Elem.sourceline), str(len(TagStack)), str(Tag)))
 
     # End of if len(TagStack) == 3:
 
-    logging.info (' Exiting FzpProcessSchematicPartsTs3 Level %s\n', Level)
+    logging.info(' Exiting FzpProcessSchematicPartsTs3 Level %s\n', Level)
 
-# End of def FzpProcessSchematicPartsTs3(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
+# End of def FzpProcessSchematicPartsTs3(InFile, Elem, Errors, Warnings,
+# Info, FzpDict, TagStack, State, Level):
+
 
 def FzpProcessSchematicPartsTs4(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
 
-    logging.info (' Entering FzpProcessSchematicPartsTs4 Level %s\n', Level)
+    logging.info(' Entering FzpProcessSchematicPartsTs4 Level %s\n', Level)
 
     StackTag, StackLevel = TagStack[len(TagStack) - 1]
 
@@ -3192,107 +3530,121 @@ def FzpProcessSchematicPartsTs4(InFile, Elem, Errors, Warnings, Info, FzpDict, T
 
     if Tag != 'subpart':
 
-        logging.debug (' FzpProcessSchematicPartsTs4: Unexpected Tag %s expected subpart\n', Tag)
+        logging.debug(
+            ' FzpProcessSchematicPartsTs4: Unexpected Tag %s expected subpart\n', Tag)
 
         # State isn't what we expected, error
 
-        Errors.append('Error 26: File\n\n{0:s}\'\nAt line {1:s}\n\nState error, expected tag \'subpart\' not {2:s}. (Missing line?)\n'.format(str(InFile), str(Elem.sourceline), str(Tag)))
+        Errors.append('Error 26: File\n\n{0:s}\'\nAt line {1:s}\n\nState error, expected tag \'subpart\' not {2:s}. (Missing line?)\n'.format(
+            str(InFile), str(Elem.sourceline), str(Tag)))
 
     else:
 
         if State['lasttag'] == 'schematic-subparts' or State['lasttag'] == 'connector':
-    
-            Id = Elem.get('id')
-    
-            if Id == None:
-    
-                logging.debug (' FzpProcessSchematicPartsTs4: Id none error\n')
 
-                Errors.append('Error 55: File\n\'{0:s}\'\nAt line {1:s}\n\nSubpart has no id\n'.format(str(InFile), str(Elem.sourceline)))
-    
+            Id = Elem.get('id')
+
+            if Id == None:
+
+                logging.debug(' FzpProcessSchematicPartsTs4: Id none error\n')
+
+                Errors.append('Error 55: File\n\'{0:s}\'\nAt line {1:s}\n\nSubpart has no id\n'.format(
+                    str(InFile), str(Elem.sourceline)))
+
             elif Id in FzpDict:
-    
-                logging.debug (' FzpProcessSchematicPartsTs4: subpart Id not unique error\n')
+
+                logging.debug(
+                    ' FzpProcessSchematicPartsTs4: subpart Id not unique error\n')
 
                 # error, connector must be unique
-    
-                Errors.append('Error 56: File\n\'{0:s}\'\nAt line {1:s}\n\nSubpart id {2:s} already exists (must be unique)\n'.format(str(InFile), str(Elem.sourceline), str(Id)))
-    
+
+                Errors.append('Error 56: File\n\'{0:s}\'\nAt line {1:s}\n\nSubpart id {2:s} already exists (must be unique)\n'.format(
+                    str(InFile), str(Elem.sourceline), str(Id)))
+
             # End of if Id == None:
-    
+
             Label = Elem.get('label')
-    
+
             if Label == None:
-    
-                logging.debug (' FzpProcessSchematicPartsTs4: Label None error\n')
-    
-                Errors.append('Error 57: File\n\'{0:s}\'\nAt line {1:s}\n\nSubpart has no label\n'.format(str(InFile), str(Elem.sourceline)))
-    
+
+                logging.debug(
+                    ' FzpProcessSchematicPartsTs4: Label None error\n')
+
+                Errors.append('Error 57: File\n\'{0:s}\'\nAt line {1:s}\n\nSubpart has no label\n'.format(
+                    str(InFile), str(Elem.sourceline)))
+
             elif Label in FzpDict:
-    
+
                 # not unique error
-    
-                logging.debug (' FzpProcessSchematicPartsTs4: Label Not unique error\n')
-    
+
+                logging.debug(
+                    ' FzpProcessSchematicPartsTs4: Label Not unique error\n')
+
                 DupNameError(InFile, Label, Elem, Errors)
-    
+
             else:
-    
+
                 # mark it as seen
-    
-                logging.debug (' FzpProcessSchematicPartsTs4: Mark Label %s seen\n',Label)
-    
-                FzpDict[Label] = Label 
-    
+
+                logging.debug(
+                    ' FzpProcessSchematicPartsTs4: Mark Label %s seen\n', Label)
+
+                FzpDict[Label] = Label
+
             # End of if Label in FzpDict:
-    
+
             # Set the subpart id even if it is None so we don't impact the last
             # subpart.
-    
+
             State['lastvalue'] = Id
-    
+
             if (Id + '.subpart') in FzpDict:
-    
+
                 # If we already have this subpart id flag an error (note in the
                 # case of None, it may be due to other errors.)
-    
-                logging.debug (' FzpProcessSchematicPartsTs4: Id %s seeni already\n',Id)
-    
-                Errors.append('Error 58: File\n\'{0:s}\'\nAt line {1:s}\n\nSubpart {2:s} already defined (duplicate?)\n'.format(str(InFile), str(Elem.sourceline), str(Id)))
-    
+
+                logging.debug(
+                    ' FzpProcessSchematicPartsTs4: Id %s seeni already\n', Id)
+
+                Errors.append('Error 58: File\n\'{0:s}\'\nAt line {1:s}\n\nSubpart {2:s} already defined (duplicate?)\n'.format(
+                    str(InFile), str(Elem.sourceline), str(Id)))
+
             else:
-    
+
                 # mark this as a subpart currently with no connections.
-    
-                logging.debug (' FzpProcessSchematicPartsTs4: Id %s set empty\n',Id)
-    
+
+                logging.debug(
+                    ' FzpProcessSchematicPartsTs4: Id %s set empty\n', Id)
+
                 FzpDict[Id + '.subpart'] = 0
 
                 if not 'subparts' in FzpDict:
 
-                    # Note that we have subparts in the dictionary for svg 
-                    # processing. 
+                    # Note that we have subparts in the dictionary for svg
+                    # processing.
 
                     FzpDict['subparts'] = []
 
                 # End of if not Subparts in FzpDict:
 
                 # Then add this subpart to the list of subpart ids and indicate
-                # we haven't yet seen it in the svg. 
+                # we haven't yet seen it in the svg.
 
-                FzpDict['subparts'].append(Id) 
-    
+                FzpDict['subparts'].append(Id)
+
             # End of if (Id + '.subpart') in FzpDict:
-    
+
         else:
 
             # State isn't what we expected, error
-    
-            logging.debug (' FzpProcessSchematicPartsTs4: State error\n',State)
 
-            Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, expected tag \'schematic-subparts\' or \'connector\' not {2:s}.\n'.format(str(InFile), str(Elem.sourceline), str(State['lasttag'])))
+            logging.debug(' FzpProcessSchematicPartsTs4: State error\n', State)
 
-        # End of if State['lasttag'] == 'schematic-subparts' or State['lasttag'] == 'connector':
+            Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, expected tag \'schematic-subparts\' or \'connector\' not {2:s}.\n'.format(
+                str(InFile), str(Elem.sourceline), str(State['lasttag'])))
+
+        # End of if State['lasttag'] == 'schematic-subparts' or
+        # State['lasttag'] == 'connector':
 
         State['lasttag'] = Tag
 
@@ -3300,13 +3652,15 @@ def FzpProcessSchematicPartsTs4(InFile, Elem, Errors, Warnings, Info, FzpDict, T
 
     # End of if Tag != 'subpart':
 
-    logging.info (' Exiting FzpProcessSchematicPartsTs4 Level %s\n', Level)
+    logging.info(' Exiting FzpProcessSchematicPartsTs4 Level %s\n', Level)
 
-# End of def FzpProcessSchematicPartsTs4(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
+# End of def FzpProcessSchematicPartsTs4(InFile, Elem, Errors, Warnings,
+# Info, FzpDict, TagStack, State, Level):
+
 
 def FzpProcessSchematicPartsTs5(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
 
-    logging.info (' Entering FzpProcessSchematicPartsTs5 Level %s\n', Level)
+    logging.info(' Entering FzpProcessSchematicPartsTs5 Level %s\n', Level)
 
     StackTag, StackLevel = TagStack[len(TagStack) - 1]
 
@@ -3314,17 +3668,20 @@ def FzpProcessSchematicPartsTs5(InFile, Elem, Errors, Warnings, Info, FzpDict, T
 
     if Tag != 'connectors':
 
-        logging.debug (' FzpProcessSchematicPartsTs5: Unexpected Tag %s expected connectors\n', Tag)
+        logging.debug(
+            ' FzpProcessSchematicPartsTs5: Unexpected Tag %s expected connectors\n', Tag)
 
         # State isn't what we expected, error
 
-        Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nState error expected tag \'connectors\' not {2:s}. Missing line?\n'.format(str(InFile), str(Elem.sourceline), str(Tag)))
+        Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nState error expected tag \'connectors\' not {2:s}. Missing line?\n'.format(
+            str(InFile), str(Elem.sourceline), str(Tag)))
 
     # End of if Tag != 'connectors':
 
     if State['lasttag'] == 'subpart':
 
-        logging.debug (' FzpProcessSchematicPartsTs5: set nexttag to connector\n')
+        logging.debug(
+            ' FzpProcessSchematicPartsTs5: set nexttag to connector\n')
 
         State['lasttag'] = Tag
 
@@ -3334,19 +3691,23 @@ def FzpProcessSchematicPartsTs5(InFile, Elem, Errors, Warnings, Info, FzpDict, T
 
         # State isn't what we expected, error
 
-        logging.debug (' FzpProcessSchematicPartsTs5: unexpected state %s expected connector\n', Tag)
+        logging.debug(
+            ' FzpProcessSchematicPartsTs5: unexpected state %s expected connector\n', Tag)
 
-        Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, expected last tag \'subpart\' not {2:s}.  (Missing line?)\n'.format(str(InFile), str(Elem.sourceline), str(State['lasttag'])))
+        Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, expected last tag \'subpart\' not {2:s}.  (Missing line?)\n'.format(
+            str(InFile), str(Elem.sourceline), str(State['lasttag'])))
 
     # End of if State['lasttag'] == 'subpart':
 
-    logging.info (' Exiting FzpProcessSchematicPartsTs5 Level %s\n', Level)
+    logging.info(' Exiting FzpProcessSchematicPartsTs5 Level %s\n', Level)
 
-# End of def FzpProcessSchematicPartsTs5(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
+# End of def FzpProcessSchematicPartsTs5(InFile, Elem, Errors, Warnings,
+# Info, FzpDict, TagStack, State, Level):
+
 
 def FzpProcessSchematicPartsTs6(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
 
-    logging.info (' Entering FzpProcessSchematicPartsTs6 Level %s\n', Level)
+    logging.info(' Entering FzpProcessSchematicPartsTs6 Level %s\n', Level)
 
     StackTag, StackLevel = TagStack[len(TagStack) - 1]
 
@@ -3354,11 +3715,13 @@ def FzpProcessSchematicPartsTs6(InFile, Elem, Errors, Warnings, Info, FzpDict, T
 
     if Tag != 'connector':
 
-        logging.debug (' FzpProcessSchematicPartsTs6: Unexpected Tag %s expected connector\n', Tag)
+        logging.debug(
+            ' FzpProcessSchematicPartsTs6: Unexpected Tag %s expected connector\n', Tag)
 
         # State isn't what we expected, error
 
-        Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, expected tag \'connector\' not {2:s}. (Missing line?)\n'.format(str(InFile), str(Elem.sourceline), str(Tag)))
+        Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, expected tag \'connector\' not {2:s}. (Missing line?)\n'.format(
+            str(InFile), str(Elem.sourceline), str(Tag)))
 
     # End of if Tag != 'connector':
 
@@ -3369,34 +3732,37 @@ def FzpProcessSchematicPartsTs6(InFile, Elem, Errors, Warnings, Info, FzpDict, T
     if State['lasttag'] == 'connectors' or State['lasttag'] == 'connector':
 
         # Get the ConnectorId
-        
+
         ConnectorId = Elem.get('id')
 
         if ConnectorId == None:
 
-            Errors.append('Error 59: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector id missing, ignored\n'.format(str(InFile), str(Elem.sourceline)))
+            Errors.append('Error 59: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector id missing, ignored\n'.format(
+                str(InFile), str(Elem.sourceline)))
 
         elif not ConnectorId in FzpDict:
 
-            Errors.append('Error 60: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector {2:s} doesn\'t exist (and it must)\n'.format(str(InFile), str(Elem.sourceline), str(ConnectorId)))
+            Errors.append('Error 60: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector {2:s} doesn\'t exist (and it must)\n'.format(
+                str(InFile), str(Elem.sourceline), str(ConnectorId)))
 
         else:
-    
-            # Since we set the value as the key as a place holder 
-            # intially, check if that is still true (i.e. this isn't 
-            # part of another subpart already). 
-    
+
+            # Since we set the value as the key as a place holder
+            # intially, check if that is still true (i.e. this isn't
+            # part of another subpart already).
+
             if FzpDict[ConnectorId + '.id.subpart'] == FzpDict[ConnectorId + '.id.subpart']:
 
-                logging.debug (' FzpProcessSchematicPartsTs6: Connector %s added to bus %s\n',ConnectorId, Id)
-    
-                # connector not part of another subpart so mark it as ours. 
+                logging.debug(
+                    ' FzpProcessSchematicPartsTs6: Connector %s added to bus %s\n', ConnectorId, Id)
+
+                # connector not part of another subpart so mark it as ours.
                 # by writing our subpart Id in to it.
-    
+
                 FzpDict[ConnectorId + '.id.subpart'] = Id
 
                 # success, so increase the connector count for this subpart
-                # by 1. 
+                # by 1.
 
                 FzpDict[Id + '.subpart'] += 1
 
@@ -3408,35 +3774,39 @@ def FzpProcessSchematicPartsTs6(InFile, Elem, Errors, Warnings, Info, FzpDict, T
 
                 # End of if not Id + '.subpart.cons' in FzpDict:
 
-                # Then add this connector to it. 
+                # Then add this connector to it.
 
                 if not 'schematic.' + ConnectorId in FzpDict:
-    
-                    Errors.append('Error 81: File\n\'{0:s}\'\nAt line {1:s}\n\nSubpart connector {2:s} has no pins defined\n'.format(str(InFile), str(Elem.sourceline), str(ConnectorId), str(FzpDict[ConnectorId + '.id.subpart'])))
+
+                    Errors.append('Error 81: File\n\'{0:s}\'\nAt line {1:s}\n\nSubpart connector {2:s} has no pins defined\n'.format(
+                        str(InFile), str(Elem.sourceline), str(ConnectorId), str(FzpDict[ConnectorId + '.id.subpart'])))
 
                 else:
 
-                    for Con in FzpDict['schematic.' + ConnectorId]: 
+                    for Con in FzpDict['schematic.' + ConnectorId]:
 
-                        # Append the pins associated with this connector to 
-                        # the subpart ID list to check when the schematic 
-                        # svg is processed later. 
+                        # Append the pins associated with this connector to
+                        # the subpart ID list to check when the schematic
+                        # svg is processed later.
 
                         FzpDict[Id + '.subpart.cons'].append(Con)
 
-                    # End of for Con in FzpDict['schematic.' + ConnectorId]: 
+                    # End of for Con in FzpDict['schematic.' + ConnectorId]:
 
                 # End of if not 'schematic.' + ConnectorId in FzpDict:
-    
+
             else:
-    
+
                 # connector is already part of another subpart, flag an error.
 
-                logging.debug (' FzpProcessSchematicPartsTs6: connector %s already in another subpart\n',ConnectorId)
-    
-                Errors.append('Error 61: File\n\'{0:s}\'\nAt line {1:s}\n\nSubpart connector {2:s} already in subpart {3:s}\n'.format(str(InFile), str(Elem.sourceline), str(ConnectorId), str(FzpDict[ConnectorId + '.id.subpart'])))
-    
-            # End of if FzpDict[connectorId + '.id.subpart'] == FzpDict[connectorId + '.id.subpart']:
+                logging.debug(
+                    ' FzpProcessSchematicPartsTs6: connector %s already in another subpart\n', ConnectorId)
+
+                Errors.append('Error 61: File\n\'{0:s}\'\nAt line {1:s}\n\nSubpart connector {2:s} already in subpart {3:s}\n'.format(
+                    str(InFile), str(Elem.sourceline), str(ConnectorId), str(FzpDict[ConnectorId + '.id.subpart'])))
+
+            # End of if FzpDict[connectorId + '.id.subpart'] ==
+            # FzpDict[connectorId + '.id.subpart']:
 
         # End of if ConnectorId == None:
 
@@ -3444,42 +3814,47 @@ def FzpProcessSchematicPartsTs6(InFile, Elem, Errors, Warnings, Info, FzpDict, T
 
         # State isn't what we expected, error
 
-        Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, expected last tag \'connectors\' or \'connector\' not {2:s}.\n'.format(str(InFile), str(Elem.sourceline), str(State['lasttag'])))
+        Errors.append('Error 26: File\n\'{0:s}\'\nAt line {1:s}\n\nState error, expected last tag \'connectors\' or \'connector\' not {2:s}.\n'.format(
+            str(InFile), str(Elem.sourceline), str(State['lasttag'])))
 
-    # end of if State['lasttag'] == 'connectors' or State['lasttag'] == 'connector':
+    # end of if State['lasttag'] == 'connectors' or State['lasttag'] ==
+    # 'connector':
 
     State['lasttag'] = Tag
 
     State['nexttag'] = 'connector'
 
-    logging.info (' Exiting FzpProcessSchematicPartsTs6 Level %s\n', Level)
+    logging.info(' Exiting FzpProcessSchematicPartsTs6 Level %s\n', Level)
 
-# End of def FzpProcessSchematicPartsTs6(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
+# End of def FzpProcessSchematicPartsTs6(InFile, Elem, Errors, Warnings,
+# Info, FzpDict, TagStack, State, Level):
+
 
 def FzpCheckConnectors(InFile, Elem, FzpDict, Errors, Warnings, Info, State):
 
-    logging.info (' Entering FzpCheckConnectors\n')
+    logging.info(' Entering FzpCheckConnectors\n')
 
     if not 'pinnos' in FzpDict or len(FzpDict['pinnos']) == 0:
 
         # no connectors found!
 
-        logging.debug (' FzpCheckConnectors: no pinnos found\n')
+        logging.debug(' FzpCheckConnectors: no pinnos found\n')
 
-        Errors.append('Error 62: File\n\'{0:s}\'\n\nNo connectors found to check\n'.format(str(InFile)))
+        Errors.append(
+            'Error 62: File\n\'{0:s}\'\n\nNo connectors found to check\n'.format(str(InFile)))
 
     else:
 
-        # Check that pin numbers start at 0 and are contiguous. 
+        # Check that pin numbers start at 0 and are contiguous.
 
-        logging.debug (' FzpCheckConnectors: pinnos %s\n',FzpDict['pinnos'])
+        logging.debug(' FzpCheckConnectors: pinnos %s\n', FzpDict['pinnos'])
 
         for Pin in range(len(FzpDict['pinnos'])):
-    
-            # Mark an error if any number in sequence doesn't exist as the 
-            # connector numbers must be contiguous. 
 
-            logging.debug (' FzpCheckConnectors: Pin %s\n', Pin)
+            # Mark an error if any number in sequence doesn't exist as the
+            # connector numbers must be contiguous.
+
+            logging.debug(' FzpCheckConnectors: Pin %s\n', Pin)
 
             if not 'pinnosmsg' in State:
 
@@ -3487,68 +3862,79 @@ def FzpCheckConnectors(InFile, Elem, FzpDict, Errors, Warnings, Info, State):
 
                 if not str(Pin) in FzpDict['pinnos']:
 
-                    logging.debug (' FzpCheckConnectors: pin %s pinnos %s\n',Pin, FzpDict['pinnos'])
+                    logging.debug(
+                        ' FzpCheckConnectors: pin %s pinnos %s\n', Pin, FzpDict['pinnos'])
 
-                    Errors.append('Error 64: File\n\'{0:s}\'\n\nConnector{1:s} doesn\'t exist when it must to stay in sequence\n'.format(str(InFile), str(Pin)))
+                    Errors.append('Error 64: File\n\'{0:s}\'\n\nConnector{1:s} doesn\'t exist when it must to stay in sequence\n'.format(
+                        str(InFile), str(Pin)))
 
                     State['pinnosmsg'] = 'y'
 
                 # End of if not Pin in FzpDict['pinnos']:
 
             # End of if not 'pinnosmsg' in State:
-        
+
         # End of for pin in range(len(FzpDict['pinnos'])):
 
     # End of if not pinnos in FzpDict or len(FzpDict['pinnos']) == 0:
 
-    logging.info (' Exiting FzpCheckConnectors\n')
+    logging.info(' Exiting FzpCheckConnectors\n')
 
-# End of def FzpCheckConnectors(InFile, Elem, FzpDict, Errors, Warnings, Info, State):
+# End of def FzpCheckConnectors(InFile, Elem, FzpDict, Errors, Warnings,
+# Info, State):
+
 
 def ProcessSvg(FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Errors, Warnings, Info, FzpDict, FilesProcessed, TagStack, State, InheritedAttributes, Debug):
 
-    logging.info (' Entering ProcessSvg\n')
+    logging.info(' Entering ProcessSvg\n')
 
-    logging.debug ('  ProcessSvg: FileType %s InFile %s OutFile %s CurView %s\n', FileType, InFile, OutFile, CurView)
+    logging.debug('  ProcessSvg: FileType %s InFile %s OutFile %s CurView %s\n',
+                  FileType, InFile, OutFile, CurView)
 
     # Parse the input document.
 
-    Doc, Root = PP.ParseFile (InFile, Errors)
+    Doc, Root = PP.ParseFile(InFile, Errors)
 
-    logging.debug ('  ProcessSvg: return from parse Doc %s\n', Doc)
+    logging.debug('  ProcessSvg: return from parse Doc %s\n', Doc)
 
     if Doc != None:
 
-        logging.debug ('  ProcessSvg: Calling ProcessTree Doc %s\n', Doc)
+        logging.debug('  ProcessSvg: Calling ProcessTree Doc %s\n', Doc)
 
         # We have successfully parsed the input document so process it. If
-        # this is only an svg file without an associated fzp, the FzpDict 
-        # will be empty as there is no fzp data to check the svg against. 
+        # this is only an svg file without an associated fzp, the FzpDict
+        # will be empty as there is no fzp data to check the svg against.
 
-        ProcessTree(FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Root, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug)
+        ProcessTree(FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Root,
+                    Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Debug)
 
         if not 'fzp' in FzpDict and 'pcbsvg' in State:
-    
-            # We don't have a fzp file so check the pcb layers which it would
-            # normally do if this is a pcb svg. 
 
-            SvgCheckPcbLayers(InFile, Errors, Warnings, Info, FzpDict, TagStack, State)
+            # We don't have a fzp file so check the pcb layers which it would
+            # normally do if this is a pcb svg.
+
+            SvgCheckPcbLayers(InFile, Errors, Warnings,
+                              Info, FzpDict, TagStack, State)
 
         # End of if not 'fzp' in FzpDict:
 
-        PP.OutputTree(Doc, Root, FileType, InFile, OutFile, Errors, Warnings, Info, Debug)
+        PP.OutputTree(Doc, Root, FileType, InFile, OutFile,
+                      Errors, Warnings, Info, Debug)
 
     # End of if Doc != None:
 
-    logging.info (' Exiting ProcessSvg\n')
+    logging.info(' Exiting ProcessSvg\n')
 
-# End of def ProcessSvg(FzpType, FileType, InFile, OutFile, CurView, PrefixDir, Errors, Warnings, Info, FzpDict, FilesProcessed, TagStack, State, InheritedAttributes, Debug):
+# End of def ProcessSvg(FzpType, FileType, InFile, OutFile, CurView,
+# PrefixDir, Errors, Warnings, Info, FzpDict, FilesProcessed, TagStack,
+# State, InheritedAttributes, Debug):
+
 
 def RemovePx(InFile, Elem, Info, Level):
 
     # Remove the trailing px from a font-size command if present.
 
-    logging.info (' Entering  RemovePx Level %s\n', Level)
+    logging.info(' Entering  RemovePx Level %s\n', Level)
 
     pxRegex = re.compile(r'px', re.IGNORECASE)
 
@@ -3558,7 +3944,7 @@ def RemovePx(InFile, Elem, Info, Level):
 
         if pxRegex.search(FontSize) != None:
 
-            logging.debug (' RemovePx: Removed a px from font-size\n')
+            logging.debug(' RemovePx: Removed a px from font-size\n')
 
             # we have a font size, so see if it has a px and remove it if so.
 
@@ -3566,22 +3952,24 @@ def RemovePx(InFile, Elem, Info, Level):
 
             Elem.set('font-size', FontSize)
 
-            Info.append('Modified 1: File\n\'{0:s}\'\nAt line {1:s}\n\nRemoved px from font-size leaving {2:s}\n'.format(str(InFile), str(Elem.sourceline), str(FontSize)))
+            Info.append('Modified 1: File\n\'{0:s}\'\nAt line {1:s}\n\nRemoved px from font-size leaving {2:s}\n'.format(
+                str(InFile), str(Elem.sourceline), str(FontSize)))
 
         # End of if pxRegex.search(FontSize) != None:
 
     # End of if not FontSize == None:
 
-    logging.info (' Exiting  RemovePx Level %s\n', Level)
+    logging.info(' Exiting  RemovePx Level %s\n', Level)
 
 # End of def RemovePx(InFile, Elem, Info):
 
 
 def ProcessSvgLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Level):
 
-    logging.info (' Entering ProcessSvgLeafNode Level %s\n', Level)
+    logging.info(' Entering ProcessSvgLeafNode Level %s\n', Level)
 
-    logging.debug (' ProcessSvgLeafNode: Entry File %s Source line %s FileType %s CurView %s State %s\n',InFile, Elem.sourceline, FileType, CurView, State)
+    logging.debug(' ProcessSvgLeafNode: Entry File %s Source line %s FileType %s CurView %s State %s\n',
+                  InFile, Elem.sourceline, FileType, CurView, State)
 
     NameSpaceRegex = re.compile(r'{.+}')
 
@@ -3589,30 +3977,30 @@ def ProcessSvgLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Erro
 
     ConnectorTermRegex = re.compile(r'connector.+terminal', re.IGNORECASE)
 
-    # Get the id and tag values and remove the namespace if present. 
+    # Get the id and tag values and remove the namespace if present.
 
     Id = Elem.get('id')
 
-    logging.debug (' ProcessSvgLeafNode: Id %s\n', Id)
+    logging.debug(' ProcessSvgLeafNode: Id %s\n', Id)
 
     Tag = NameSpaceRegex.sub('', str(Id))
 
-    logging.debug (' ProcessSvgLeafNode: removed namespace from Id %s\n', Id)
+    logging.debug(' ProcessSvgLeafNode: removed namespace from Id %s\n', Id)
 
-    # If there is an id for this node, remove the name space element 
-    # from the tag to make later processing easier. 
+    # If there is an id for this node, remove the name space element
+    # from the tag to make later processing easier.
 
     Tag = Elem.tag
 
-    logging.debug (' ProcessSvgLeafNode: Tag %s\n', Tag)
+    logging.debug(' ProcessSvgLeafNode: Tag %s\n', Tag)
 
     Tag = NameSpaceRegex.sub('', str(Tag))
 
-    logging.debug (' ProcessSvgLeafNode: removed namespace from Tag %s\n', Tag)
+    logging.debug(' ProcessSvgLeafNode: removed namespace from Tag %s\n', Tag)
 
     if not 'SvgStart' in State:
 
-        # Haven't yet seen the svg start line so check this one. 
+        # Haven't yet seen the svg start line so check this one.
 
         SvgStartElem(InFile, Elem, Errors, Warnings, Info, State, Level)
 
@@ -3622,25 +4010,28 @@ def ProcessSvgLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Erro
 
     SvgRefFile(FzpType, InFile, Elem, Errors, Warnings, Info, State, Level)
 
-    # First find and set any of Fritzing's layer ids in this element. 
+    # First find and set any of Fritzing's layer ids in this element.
 
-    SvgGroup(InFile, CurView, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level)
+    SvgGroup(InFile, CurView, Elem, Errors, Warnings,
+             Info, FzpDict, TagStack, State, Level)
 
     # Check we have a layerId before any drawing element.
 
-    SvgCheckForLayerId(Tag, InFile, CurView, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level)
+    SvgCheckForLayerId(Tag, InFile, CurView, Elem, Errors,
+                       Warnings, Info, FzpDict, TagStack, State, Level)
 
-    # Then convert any style commands to inline xml (as Fritzing sometimes 
-    # doesn't process style commands and the 2 forms are identical). 
+    # Then convert any style commands to inline xml (as Fritzing sometimes
+    # doesn't process style commands and the 2 forms are identical).
 
     SvgInlineStyle(InFile, Elem, Warnings, State)
 
     # Remove any inheritable attributes (external scripts for pcb generation
-    # can't inherit parameters so make them local). 
+    # can't inherit parameters so make them local).
 
-    SvgRemoveInheritableAttribs(InFile, Elem, Errors, Warnings, Info, State, InheritedAttributes, Level)
+    SvgRemoveInheritableAttribs(
+        InFile, Elem, Errors, Warnings, Info, State, InheritedAttributes, Level)
 
-    # Remove any px from the font-size commands. 
+    # Remove any px from the font-size commands.
 
     RemovePx(InFile, Elem, Info, Level)
 
@@ -3653,44 +4044,48 @@ def ProcessSvgLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Erro
         if not 'font.warning' in FzpDict:
 
             # Issue the warning then mark it as done so it only happens once
-            # per file. 
+            # per file.
 
-            Warnings.append('Warning 24: File\n\'{0:s}\'\nAt line {1:s}\n\nFont family {2:s} is not Droid Sans or OCRA\nThis won\'t render in Fritzing\n'.format(str(InFile), str(Elem.sourceline), str(FontFamily)))
+            Warnings.append('Warning 24: File\n\'{0:s}\'\nAt line {1:s}\n\nFont family {2:s} is not Droid Sans or OCRA\nThis won\'t render in Fritzing\n'.format(
+                str(InFile), str(Elem.sourceline), str(FontFamily)))
 
             FzpDict['font.warning'] = 'y'
 
         # End of if not 'font.warning' in FzpDict:
 
-    # End of if not FontFamily == None and not FontFamily in ['DroidSans', "'Droid Sans'", "'OCRA'", 'OCRA']:
+    # End of if not FontFamily == None and not FontFamily in ['DroidSans',
+    # "'Droid Sans'", "'OCRA'", 'OCRA']:
 
     # Check if this is a connector terminal definition
-    # The str below takes care of comments which aren't a byte string and 
-    # thus cause an exception. 
+    # The str below takes care of comments which aren't a byte string and
+    # thus cause an exception.
 
     Term = ConnectorTermRegex.search(str(Id))
 
-    logging.debug (' ProcessSvgLeafNode: Term %s Tag %s\n', Term, Tag)
-    
+    logging.debug(' ProcessSvgLeafNode: Term %s Tag %s\n', Term, Tag)
+
     if Term != None:
 
         # This looks to be a terminal definition so check it is a valid type.
 
-        if Tag in ['path' , 'g']: 
+        if Tag in ['path', 'g']:
 
             # Note one of the illegal terminalId types is present.
 
-            Errors.append('Error 77: File\n\'{0:s}\'\nAt line {1:s}\n\nterminalId {2:s} can\'t be a {3:s} as it won\'t work.\n'.format(str(InFile), str(Elem.sourceline), str(Id), str(Tag)))
+            Errors.append('Error 77: File\n\'{0:s}\'\nAt line {1:s}\n\nterminalId {2:s} can\'t be a {3:s} as it won\'t work.\n'.format(
+                str(InFile), str(Elem.sourceline), str(Id), str(Tag)))
 
-        # End of if Tag in ['path']: 
+        # End of if Tag in ['path']:
 
         # Since this is a terminal, check for height or width of 0 and complain
-        # if so. 
-            
+        # if so.
+
         Height = Elem.get('height')
-            
+
         Width = Elem.get('width')
 
-        logging.debug (' ProcessSvgLeafNode: terminal %s height / width check height %s width %s\n', Id, Height, Width)
+        logging.debug(
+            ' ProcessSvgLeafNode: terminal %s height / width check height %s width %s\n', Id, Height, Width)
 
         if Height == '0':
 
@@ -3700,19 +4095,21 @@ def ProcessSvgLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Erro
 
                 Elem.set('height', '10')
 
-                # and log an error to warn the user we made a change that will 
-                # affect the svg terminal position so they check it. 
+                # and log an error to warn the user we made a change that will
+                # affect the svg terminal position so they check it.
 
                 Errors.append('Modified 2: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector {2:s} had a zero height, set to 10\nCheck the alignment of this pin in the svg!\n'.format(
                     str(InFile), str(Elem.sourceline), str(Id)))
 
-            else :
+            else:
 
-                Warnings.append('Warning 16: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector {2:s} has a zero height\nand thus is not selectable in Inkscape\n'.format(str(InFile), str(Elem.sourceline), str(Id)))
+                Warnings.append('Warning 16: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector {2:s} has a zero height\nand thus is not selectable in Inkscape\n'.format(
+                    str(InFile), str(Elem.sourceline), str(Id)))
 
             # End of if ModifyTerminal == 'y':
 
-            logging.debug (' ProcessSvgLeafNode: terminal %s 0 height warned or changed\n', Id)
+            logging.debug(
+                ' ProcessSvgLeafNode: terminal %s 0 height warned or changed\n', Id)
 
         # End of if Height == '0':
 
@@ -3721,61 +4118,66 @@ def ProcessSvgLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Erro
             if ModifyTerminal == 'y':
 
                 # Set the element to 10 and issue an error so the user knows
-                # to check the alignment of the terminal (which will have 
-                # changed). 
+                # to check the alignment of the terminal (which will have
+                # changed).
 
                 Elem.set('width', '10')
 
-                Errors.append('Modified 2: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector {2:s} had a zero width, set to 10\nCheck the alignment of this pin in the svg!\n'.format(str(InFile), str(Elem.sourceline), str(Id)))
+                Errors.append('Modified 2: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector {2:s} had a zero width, set to 10\nCheck the alignment of this pin in the svg!\n'.format(
+                    str(InFile), str(Elem.sourceline), str(Id)))
 
             else:
 
-                Warnings.append('Warning 16: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector {2:s} has a zero width\nand thus is not selectable in Inkscape\n'.format(str(InFile), str(Elem.sourceline), str(Id)))
+                Warnings.append('Warning 16: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector {2:s} has a zero width\nand thus is not selectable in Inkscape\n'.format(
+                    str(InFile), str(Elem.sourceline), str(Id)))
 
             # End of if ModifyTerminal == 'y':
 
-            logging.debug (' ProcessSvgLeafNode: terminal %s issued\n', Id)
+            logging.debug(' ProcessSvgLeafNode: terminal %s issued\n', Id)
 
         # End of if Width == '0':
-    
+
     # End of if Term != None:
 
     # End of if not 'connectors.svg.' + CurView in FzpDict:
 
     if Id != None and 'fzp' in FzpDict:
 
-        # We are processing an svg from a fzp file so we can do more tests as 
+        # We are processing an svg from a fzp file so we can do more tests as
         # we have connector and subpart data in the dict.
 
-        # iconView doesn't have connectors so ignore it. 
+        # iconView doesn't have connectors so ignore it.
 
         if CurView != None and CurView != 'iconView' and Id in FzpDict['connectors.fzp.' + CurView]:
 
             if not 'connectors.svg.' + CurView in FzpDict:
-        
+
                 # Doesn't exist yet so create it and add this connector.
-        
+
                 FzpDict['connectors.svg.' + CurView] = [Id]
-        
-                logging.debug (' ProcessSvgLeafNode: Created connectors.svg.%s and added %s to get %s\n', CurView, Id, FzpDict['connectors.svg.' + CurView])
-        
+
+                logging.debug(' ProcessSvgLeafNode: Created connectors.svg.%s and added %s to get %s\n',
+                              CurView, Id, FzpDict['connectors.svg.' + CurView])
+
             else:
-        
-                # Check for a dup connector. While Inkscape won't let you 
+
+                # Check for a dup connector. While Inkscape won't let you
                 # create one, a text editor or script generated part would ...
-        
+
                 if Id in FzpDict['connectors.svg.' + CurView]:
-        
-                    Errors.append('Error 66: File\n{0:s}\nAt line {1:s}\n\nConnector {2:s} is a duplicate (and should be unique)\n'.format(str(InFile), str(Elem.sourceline), str(Id)))
-        
+
+                    Errors.append('Error 66: File\n{0:s}\nAt line {1:s}\n\nConnector {2:s} is a duplicate (and should be unique)\n'.format(
+                        str(InFile), str(Elem.sourceline), str(Id)))
+
                 else:
-        
-                    # not a dup, so append it to the list. 
-        
+
+                    # not a dup, so append it to the list.
+
                     FzpDict['connectors.svg.' + CurView].append(Id)
-        
-                    logging.debug (' ProcessSvgLeafNode: Appended %s to connectors.svg.%s to get %s\n', Id, CurView, FzpDict['connectors.svg.' + CurView])
-        
+
+                    logging.debug(' ProcessSvgLeafNode: Appended %s to connectors.svg.%s to get %s\n', Id, CurView, FzpDict[
+                                  'connectors.svg.' + CurView])
+
                 # End of if Id in FzpDict['connectors.svg.' + CurView]:
 
             # End of if not 'connectors.svg.' + CurView in FzpDict:
@@ -3785,7 +4187,7 @@ def ProcessSvgLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Erro
                 # Get what should be the subpart tag from the tag stack
 
                 if len(TagStack) > 2:
-        
+
                     SubPartTag, StackLevel = TagStack[2]
 
                 else:
@@ -3794,33 +4196,41 @@ def ProcessSvgLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Erro
 
                 # End of if len(TagStack) > 2:
 
-                logging.debug (' ProcessSvgLeafNode: SubPartTag %s\n', SubPartTag)
+                logging.debug(
+                    ' ProcessSvgLeafNode: SubPartTag %s\n', SubPartTag)
 
                 if not 'subpartid' in State:
 
                     # no subpartID present at this time error.
 
-                    Errors.append('Error 82: File\n\'{0:s}\'\nAt line {1:s}\n\nconnector {2:s} isn\'t in a subpart\n'.format(str(InFile), str(Elem.sourceline), str(Id)))
+                    Errors.append('Error 82: File\n\'{0:s}\'\nAt line {1:s}\n\nconnector {2:s} isn\'t in a subpart\n'.format(
+                        str(InFile), str(Elem.sourceline), str(Id)))
 
-                    logging.debug (' ProcessSvgLeafNode: subparts connector %s not in subpart\n', Id)
+                    logging.debug(
+                        ' ProcessSvgLeafNode: subparts connector %s not in subpart\n', Id)
 
                 else:
 
-                    logging.debug (' ProcessSvgLeafNode: State[\'subpartid\'] %s SubPartTag %s\n', State['subpartid'], SubPartTag)
-    
+                    logging.debug(' ProcessSvgLeafNode: State[\'subpartid\'] %s SubPartTag %s\n', State[
+                                  'subpartid'], SubPartTag)
+
                     if not State['subpartid'] == SubPartTag:
 
                         if SubPartTag == 'none':
 
-                            Errors.append('Error 82: File\n\'{0:s}\'\nAt line {1:s}\n\nconnector {2:s} isn\'t in a subpart\n'.format(str(InFile), str(Elem.sourceline), str(Id)))
+                            Errors.append('Error 82: File\n\'{0:s}\'\nAt line {1:s}\n\nconnector {2:s} isn\'t in a subpart\n'.format(
+                                str(InFile), str(Elem.sourceline), str(Id)))
 
-                            logging.debug (' ProcessSvgLeafNode: subparts connector %s not in subpart\n', Id)
+                            logging.debug(
+                                ' ProcessSvgLeafNode: subparts connector %s not in subpart\n', Id)
 
                         else:
 
-                            Errors.append('Error 83: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector {2:s} shouldn\'t be in subpart {3:s} as it is\n'.format(str(InFile), str(Elem.sourceline), str(Id), str(SubPartTag)))
+                            Errors.append('Error 83: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector {2:s} shouldn\'t be in subpart {3:s} as it is\n'.format(
+                                str(InFile), str(Elem.sourceline), str(Id), str(SubPartTag)))
 
-                            logging.debug (' ProcessSvgLeafNode: subparts connector %s not in correct subpart\n', Id)
+                            logging.debug(
+                                ' ProcessSvgLeafNode: subparts connector %s not in correct subpart\n', Id)
 
                         # End of if SubPartTag == 'none':
 
@@ -3830,17 +4240,21 @@ def ProcessSvgLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Erro
 
                         FzpDict[SubPartTag + '.svg.subparts'].append(Id)
 
-                        logging.debug (' ProcessSvgLeafNode: connector %s added to FzpDict[%s]\n', Id, SubPartTag + '.svg.subparts')
+                        logging.debug(
+                            ' ProcessSvgLeafNode: connector %s added to FzpDict[%s]\n', Id, SubPartTag + '.svg.subparts')
 
                     else:
 
-                        Errors.append('Error 84: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector {2:s} in incorrect subpart {3:s}\n'.format(str(InFile), str(Elem.sourceline), str(Id), str(SubPartTag)))
+                        Errors.append('Error 84: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector {2:s} in incorrect subpart {3:s}\n'.format(
+                            str(InFile), str(Elem.sourceline), str(Id), str(SubPartTag)))
 
-                        logging.debug (' ProcessSvgLeafNode: subparts connector %s in wrong subpart %s\n', Id, SubPartTag)
+                        logging.debug(
+                            ' ProcessSvgLeafNode: subparts connector %s in wrong subpart %s\n', Id, SubPartTag)
 
                     # End of if Id in FzpDict[SubPartTag + ',subpart.cons']:
 
-                # End of if not 'subpartid' in State and not State['subpartid'] == SubPartTag:
+                # End of if not 'subpartid' in State and not State['subpartid']
+                # == SubPartTag:
 
             # End of if CurView == 'schematicView' and 'subparts' in FzpDict:
 
@@ -3852,7 +4266,7 @@ def ProcessSvgLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Erro
                 # As this is only true for through hole parts and we don't yet
                 # know if this part is through hole, put this in State for now
                 # to be added to Errors only if this turns out to be a through
-                # hole part later. 
+                # hole part later.
 
                 RadiusX = Elem.get('rx')
 
@@ -3862,13 +4276,17 @@ def ProcessSvgLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Erro
 
                         # pcb exists and has copper0 and copper1
 
-                        Errors.append('Error 65: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector {2:s} is an ellipse not a circle, (gerber generation will break.)\n'.format(str(InFile), str(Elem.sourceline), str(Id)))
+                        Errors.append('Error 65: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector {2:s} is an ellipse not a circle, (gerber generation will break.)\n'.format(
+                            str(InFile), str(Elem.sourceline), str(Id)))
 
                     else:
 
-                        State['noradius'].append('Error 65: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector {2:s} is an ellipse not a circle, (gerber generation will break.)\n'.format(str(InFile), str(Elem.sourceline), str(Id)))
+                        State['noradius'].append('Error 65: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector {2:s} is an ellipse not a circle, (gerber generation will break.)\n'.format(
+                            str(InFile), str(Elem.sourceline), str(Id)))
 
-                    # End of if not 'hybridsetforpcbView' in State and copper0.layerid' in FzpDict and 'copper1.layerid' in FzpDict:
+                    # End of if not 'hybridsetforpcbView' in State and
+                    # copper0.layerid' in FzpDict and 'copper1.layerid' in
+                    # FzpDict:
 
                 # End of if RadiusX != None:
 
@@ -3877,7 +4295,7 @@ def ProcessSvgLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Erro
                 # As this is only true for through hole parts and we don't yet
                 # know if this part is through hole, put this in State for now
                 # to be added to Errors only if this turns out to be a through
-                # hole part later. 
+                # hole part later.
 
                 if Radius == None:
 
@@ -3885,17 +4303,21 @@ def ProcessSvgLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Erro
 
                         # pcb exists and has copper0 and copper1
 
-                        Errors.append('Error 74: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector {2:s} has no radius no hole will be generated\n'.format(str(InFile), str(Elem.sourceline), str(Id)))
+                        Errors.append('Error 74: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector {2:s} has no radius no hole will be generated\n'.format(
+                            str(InFile), str(Elem.sourceline), str(Id)))
 
                     else:
-        
+
                         # this is only an svg so we don't yet know if this is
                         # a through hole part yet so save the error message
                         # in State until we do.
-            
-                        State['noradius'].append('Error 74: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector {2:s} has no radius no hole will be generated\n'.format(str(InFile), str(Elem.sourceline), str(Id)))
 
-                    # End of if not 'hybridsetforpcbView' in State and copper0.layerid' in FzpDict and 'copper1.layerid' in FzpDict:
+                        State['noradius'].append('Error 74: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector {2:s} has no radius no hole will be generated\n'.format(
+                            str(InFile), str(Elem.sourceline), str(Id)))
+
+                    # End of if not 'hybridsetforpcbView' in State and
+                    # copper0.layerid' in FzpDict and 'copper1.layerid' in
+                    # FzpDict:
 
                 # End of if Radius != None:
 
@@ -3905,38 +4327,42 @@ def ProcessSvgLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Erro
 
         if CurView == 'schematicView' and 'subparts' in FzpDict:
 
-            # We are in schematic and it has subparts so check they are 
+            # We are in schematic and it has subparts so check they are
             # correct.
 
             if Id in FzpDict['subparts']:
 
-                logging.debug (' ProcessSvgLeafNode: Start of  subpart Id %s\n', Id)
+                logging.debug(
+                    ' ProcessSvgLeafNode: Start of  subpart Id %s\n', Id)
 
-                # Mark that we have seen a subpart label with (so far) no 
+                # Mark that we have seen a subpart label with (so far) no
                 # connectors
 
                 if Id + '.svg.subparts' in FzpDict:
 
-                    # Complain about a dup (although this shouldn't be able 
-                    # to occur except via manual editing). 
+                    # Complain about a dup (although this shouldn't be able
+                    # to occur except via manual editing).
 
-                    logging.debug (' ProcessSvgLeafNode: subparts Id %s duplicate\n', Id)
-                    Errors.append('Error 85: File\n\'{0:s}\'\nAt line {1:s}\n\nsubpart label {2:s} is already defined\n'.format(str(InFile), str(Elem.sourceline), str(Id)))
+                    logging.debug(
+                        ' ProcessSvgLeafNode: subparts Id %s duplicate\n', Id)
+                    Errors.append('Error 85: File\n\'{0:s}\'\nAt line {1:s}\n\nsubpart label {2:s} is already defined\n'.format(
+                        str(InFile), str(Elem.sourceline), str(Id)))
 
                 else:
 
-                    # Create an empty list to contain the connectorids 
+                    # Create an empty list to contain the connectorids
                     # for this label for later checking (to make sure they are
-                    # all present). 
+                    # all present).
 
                     FzpDict[Id + '.svg.subparts'] = []
 
                     # Then record this subpartid in State for later connector
-                    # ids. 
+                    # ids.
 
                     State['subpartid'] = Id
 
-                    logging.debug (' ProcessSvgLeafNode: Create FzpDict[%s] and set state[\'subpartid\'] to %s\n', Id + '.svg.subparts', Id)
+                    logging.debug(
+                        ' ProcessSvgLeafNode: Create FzpDict[%s] and set state[\'subpartid\'] to %s\n', Id + '.svg.subparts', Id)
 
                 # End of if Id + '.subparts' in FzpDict:
 
@@ -3950,28 +4376,31 @@ def ProcessSvgLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Erro
 
         # If there are inherited attributes step through them adding any
         # attributes that don't already exist. If the attribute is present
-        # discard the inherited value. 
+        # discard the inherited value.
 
         SvgSetInheritedAttributes(InFile, Elem, InheritedAttributes)
 
     # End of if not InheritedAttributes == None:
 
     # Finally after all the attributes are set, search for font-size commands
-    # and remove the trailing px (which Fritzing doesn't like) if it is present.
+    # and remove the trailing px (which Fritzing doesn't like) if it is
+    # present.
 
     RemovePx(InFile, Elem, Info, Level)
 
     # Then if this is group silkscreen, convert old style white silkscreen
-    # (in all its forms) to new style black silkscreen. Warn about and 
+    # (in all its forms) to new style black silkscreen. Warn about and
     # modify items that are neither black nor white.
 
     if State['lastvalue'] == 'silkscreen':
 
         # Create the two color dictionaries
 
-        ColorIsWhite = { 'white': 'y', 'WHITE': 'y', '#ffffff': 'y', '#FFFFFF': 'y', 'rgb(255, 255, 255)': 'y'}
+        ColorIsWhite = {'white': 'y', 'WHITE': 'y', '#ffffff': 'y',
+                        '#FFFFFF': 'y', 'rgb(255, 255, 255)': 'y'}
 
-        ColorIsBlack = { 'black': 'y', 'BLACK': 'y', '#000000': 'y', 'rgb(0, 0, 0)': 'y'}
+        ColorIsBlack = {'black': 'y', 'BLACK': 'y',
+                        '#000000': 'y', 'rgb(0, 0, 0)': 'y'}
 
         Stroke = Elem.get('stroke')
 
@@ -3979,13 +4408,15 @@ def ProcessSvgLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Erro
 
             Elem.set('stroke', '#000000')
 
-            # Change any non black color to black. 
+            # Change any non black color to black.
 
-            Info.append('Modified 3: File\n\'{0:s}\'\nAt line {1:s}\n\nSilkscreen, converted stoke from white to black\n'.format(str(InFile), str(Elem.sourceline)))
+            Info.append('Modified 3: File\n\'{0:s}\'\nAt line {1:s}\n\nSilkscreen, converted stoke from white to black\n'.format(
+                str(InFile), str(Elem.sourceline)))
 
         elif not (Stroke == None or Stroke == 'none' or Stroke in ColorIsBlack):
 
-            Info.append('Modified 3: File\n\'{0:s}\'\nAt line {1:s}\n\nSilkscreen stroke color {2:s} isn\'t white or black. Set to black.\n'.format(str(InFile), str(Elem.sourceline), str(Stroke)))
+            Info.append('Modified 3: File\n\'{0:s}\'\nAt line {1:s}\n\nSilkscreen stroke color {2:s} isn\'t white or black. Set to black.\n'.format(
+                str(InFile), str(Elem.sourceline), str(Stroke)))
 
             Elem.set('stroke', '#000000')
 
@@ -3997,7 +4428,8 @@ def ProcessSvgLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Erro
 
             # If the color is currently white or not black set it to black.
 
-            Info.append('Modified 3: File\n\'{0:s}\'\nAt line {1:s}\n\nSilkscreen, converted fill from white to black\n'.format(str(InFile), str(Elem.sourceline)))
+            Info.append('Modified 3: File\n\'{0:s}\'\nAt line {1:s}\n\nSilkscreen, converted fill from white to black\n'.format(
+                str(InFile), str(Elem.sourceline)))
 
             Elem.set('fill', '#000000')
 
@@ -4006,7 +4438,8 @@ def ProcessSvgLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Erro
             # If the current color is neither white nor black (but not none),
             # tell the user so but otherwise ignore it.
 
-            Info.append('Modified 3: File\n\'{0:s}\'\nAt line {1:s}\n\nSilkscreen fill color {2:s} isn\'t white or black. Set to black.\n'.format(str(InFile), str(Elem.sourceline), str(Fill)))
+            Info.append('Modified 3: File\n\'{0:s}\'\nAt line {1:s}\n\nSilkscreen fill color {2:s} isn\'t white or black. Set to black.\n'.format(
+                str(InFile), str(Elem.sourceline), str(Fill)))
 
             Elem.set('fill', '#000000')
 
@@ -4014,29 +4447,33 @@ def ProcessSvgLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Erro
 
     # End of if State['lastvalue'] == 'silkscreen':
 
-    logging.debug ('  ProcessSvgLeafNode: State %s\n', State)
+    logging.debug('  ProcessSvgLeafNode: State %s\n', State)
 
-    logging.info (' Exiting ProcessSvgLeafNode Level %s\n', Level)
+    logging.info(' Exiting ProcessSvgLeafNode Level %s\n', Level)
 
-# End of def ProcessSvgLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, InheritedAttributes, Level):
+# End of def ProcessSvgLeafNode(FzpType, FileType, InFile, CurView,
+# PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State,
+# InheritedAttributes, Level):
+
 
 def SvgStartElem(InFile, Elem, Errors, Warnings, Info, State, Level):
 
-    logging.info (' Entering SvgStartElem Level %s\n', Level)
+    logging.info(' Entering SvgStartElem Level %s\n', Level)
 
     NumPxRegex = re.compile(r'\d$|px$', re.IGNORECASE)
 
     Tag = Elem.tag
 
     if Tag == '{http://www.w3.org/2000/svg}svg' or Tag == 'svg':
-    
+
         if 'SvgStart' in State:
 
-            Warnings.append('Warning 17: File\n\'{0:s}\'\nAt line {1:s}\n\nMore than one svg tag found\n'.format(str(InFile), str(Elem.sourceline)))
-    
+            Warnings.append('Warning 17: File\n\'{0:s}\'\nAt line {1:s}\n\nMore than one svg tag found\n'.format(
+                str(InFile), str(Elem.sourceline)))
+
         # End of if 'SvgStart' in State:
 
-        # Mark that we have seen the start tag for later. 
+        # Mark that we have seen the start tag for later.
 
         State['SvgStart'] = 'y'
 
@@ -4046,21 +4483,23 @@ def SvgStartElem(InFile, Elem, Errors, Warnings, Info, State, Level):
 
         # Check for either a bare number or numberpx as the height or width.
 
-        logging.debug (' SvgStartElem: Height %s Width %s\n',Height, Width)
+        logging.debug(' SvgStartElem: Height %s Width %s\n', Height, Width)
 
         if Height == None:
 
-            Warnings.append('Warning 18: File\n\'{0:s}\'\nAt line {1:s}\n\nHeight attribute missing\n'.format(str(InFile), str(Elem.sourceline)))
+            Warnings.append('Warning 18: File\n\'{0:s}\'\nAt line {1:s}\n\nHeight attribute missing\n'.format(
+                str(InFile), str(Elem.sourceline)))
 
         else:
 
             Units = NumPxRegex.search(str(Height))
 
-            logging.debug (' SvgStartElem: Height units %s\n', Units)
+            logging.debug(' SvgStartElem: Height units %s\n', Units)
 
             if Units != None:
 
-                Warnings.append('Warning 19: File\n\'{0:s}\'\nAt line {1:s}\n\nHeight {2:s} is defined in px\nin or mm is a better option (px can cause scaling problems!)\n'.format(str(InFile), str(Elem.sourceline), str(Height)))
+                Warnings.append('Warning 19: File\n\'{0:s}\'\nAt line {1:s}\n\nHeight {2:s} is defined in px\nin or mm is a better option (px can cause scaling problems!)\n'.format(
+                    str(InFile), str(Elem.sourceline), str(Height)))
 
             # End of if Height != None:
 
@@ -4068,59 +4507,64 @@ def SvgStartElem(InFile, Elem, Errors, Warnings, Info, State, Level):
 
         if Width == None:
 
-            Warnings.append('Warning 18: File\n\'{0:s}\'\nAt line {1:s}\n\nWidth attribute missing\n'.format(str(InFile), str(Elem.sourceline)))
+            Warnings.append('Warning 18: File\n\'{0:s}\'\nAt line {1:s}\n\nWidth attribute missing\n'.format(
+                str(InFile), str(Elem.sourceline)))
 
         else:
 
             Units = NumPxRegex.search(str(Width))
 
-            logging.debug (' SvgStartElem: Width units %s\n', Units)
+            logging.debug(' SvgStartElem: Width units %s\n', Units)
 
             if Units != None:
 
-                Warnings.append('Warning 19: File\n\'{0:s}\'\nAt line {1:s}\n\nWidth {2:s} is defined in px\nin or mm is a better option (px can cause scaling problems!)\n'.format(str(InFile), str(Elem.sourceline), str(Width)))
+                Warnings.append('Warning 19: File\n\'{0:s}\'\nAt line {1:s}\n\nWidth {2:s} is defined in px\nin or mm is a better option (px can cause scaling problems!)\n'.format(
+                    str(InFile), str(Elem.sourceline), str(Width)))
 
             # End of if Units != "":
 
         # End of if Width = None:
 
     else:
-    
+
         if not 'SvgStart' in State:
 
-            Errors.append('Error 67: File\n\'{0:s}\'\nAt line {1:s}\n\nFirst Tag {2:s} isn\'t an svg definition\n\n'.format(str(InFile), str(Elem.sourceline), str(Tag)))
+            Errors.append('Error 67: File\n\'{0:s}\'\nAt line {1:s}\n\nFirst Tag {2:s} isn\'t an svg definition\n\n'.format(
+                str(InFile), str(Elem.sourceline), str(Tag)))
 
             # then set 'SvgStart' so we don't repeat this warning.
 
             State['SvgStart'] = 'y'
-    
+
         # End of if not 'SvgStart' in State:
 
     # End of if Tag == '{http://www.w3.org/2000/svg}svg':
 
-    logging.info (' Exiting SvgStartElem Level %s\n', Level)
+    logging.info(' Exiting SvgStartElem Level %s\n', Level)
 
 # End of def SvgStartElem(InFile, Elem, Errors, Warnings, Info, State, Level):
 
+
 def SvgRefFile(FzpType, InFile, Elem, Errors, Warnings, Info, State, Level):
 
-    logging.info (' Entering  SvgRefFile Line %s Level %s\n', Elem.sourceline, Level)
+    logging.info(' Entering  SvgRefFile Line %s Level %s\n',
+                 Elem.sourceline, Level)
 
-    logging.debug (' SvgRefFile: FzpType %s InFile %s\n', FzpType, InFile)
-   
+    logging.debug(' SvgRefFile: FzpType %s InFile %s\n', FzpType, InFile)
+
     SvgRegex = re.compile(r'^svg\.\w+\.', re.IGNORECASE)
-    
+
     # Check if this is a referenceFile definition.
 
     Tag = Elem.tag
 
-    logging.debug (' SvgRefFile: Tag %s\n',Tag)
+    logging.debug(' SvgRefFile: Tag %s\n', Tag)
 
     if Tag != '{http://www.w3.org/2000/svg}referenceFile':
 
         # No, so return.
 
-        logging.debug (' SvgRefFile: not reference file, returning\n')
+        logging.debug(' SvgRefFile: not reference file, returning\n')
 
         return
 
@@ -4132,9 +4576,9 @@ def SvgRefFile(FzpType, InFile, Elem, Errors, Warnings, Info, State, Level):
 
     # Remove the trailing .bak if it is present.
 
-    File = re.sub(r'\.bak$','', File)
+    File = re.sub(r'\.bak$', '', File)
 
-    logging.debug (' SvgRefFile: File %s\n', File)
+    logging.debug(' SvgRefFile: File %s\n', File)
 
     if FzpType == 'FZPPART':
 
@@ -4143,7 +4587,7 @@ def SvgRefFile(FzpType, InFile, Elem, Errors, Warnings, Info, State, Level):
 
         File = SvgRegex.sub('', File)
 
-        logging.debug (' SvgRefFile: Corrected file %s\n', File)
+        logging.debug(' SvgRefFile: Corrected file %s\n', File)
 
     # End of if FzpType == 'FZPPART':
 
@@ -4151,25 +4595,29 @@ def SvgRefFile(FzpType, InFile, Elem, Errors, Warnings, Info, State, Level):
 
         # They don't match, so correct it (and log it).
 
-        Info.append('Modified 4: File\n\'{0:s}\'\nAt line {1:s}\n\nReferenceFile\n\n\'{2:s}\'\n\ndoesn\'t match input file\n\n\'{3:s}\'\n\nCorrected\n'.format(str(InFile), str(Elem.sourceline), str(Elem.text), str(File)))
+        Info.append('Modified 4: File\n\'{0:s}\'\nAt line {1:s}\n\nReferenceFile\n\n\'{2:s}\'\n\ndoesn\'t match input file\n\n\'{3:s}\'\n\nCorrected\n'.format(
+            str(InFile), str(Elem.sourceline), str(Elem.text), str(File)))
 
         Elem.text = File
 
-        logging.debug (' SvgRefFile: set reference file to %s\n',Elem.text)
+        logging.debug(' SvgRefFile: set reference file to %s\n', Elem.text)
 
     # End of if ReferenceFile != File:
 
-# End of def SvgRefFile(FzpType, InFile, Elem, Errors, Warnings, Info, State, Level):
+# End of def SvgRefFile(FzpType, InFile, Elem, Errors, Warnings, Info,
+# State, Level):
+
 
 def SvgCheckForLayerId(Tag, InFile, CurView, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
 
-    logging.info (' Entering SvgCheckForLayerId Level %s\n', Level)
+    logging.info(' Entering SvgCheckForLayerId Level %s\n', Level)
 
-    logging.debug(' SvgCheckForLayerId: On entry Tag %s TagStack %s State %s\n', Tag, TagStack, State)
+    logging.debug(
+        ' SvgCheckForLayerId: On entry Tag %s TagStack %s State %s\n', Tag, TagStack, State)
 
-    # Check we have seen a svg definition and a layerId before the first 
+    # Check we have seen a svg definition and a layerId before the first
     # drawing element. Ignore iconview because it doesn't matter as it isn't
-    # processed by Fritzing. 
+    # processed by Fritzing.
 
     if CurView != 'iconView' and not 'SvgFirstGroup' in State and Tag in ['rect', 'line', 'text', 'polyline', 'polygon', 'path', 'circle', 'ellipse', 'tspan']:
 
@@ -4177,7 +4625,8 @@ def SvgCheckForLayerId(Tag, InFile, CurView, Elem, Errors, Warnings, Info, FzpDi
 
             # If we haven't seen the svg definition flag an error.
 
-            Errors.append('Error 68: File\n\'{0:s}\'\nAt line {1:s}\n\nFound first group but without a svg definition\n'.format(str(InFile), str(Elem.sourceline)))
+            Errors.append('Error 68: File\n\'{0:s}\'\nAt line {1:s}\n\nFound first group but without a svg definition\n'.format(
+                str(InFile), str(Elem.sourceline)))
 
         # End of if not 'SvgStart' in State:
 
@@ -4185,27 +4634,33 @@ def SvgCheckForLayerId(Tag, InFile, CurView, Elem, Errors, Warnings, Info, FzpDi
 
         State['SvgFirstGroup'] = 'y'
 
-        logging.debug(' SvgCheckForLayerId: line %s Tag %s found starting tag\n', Elem.sourceline, Tag)
-        
+        logging.debug(
+            ' SvgCheckForLayerId: line %s Tag %s found starting tag\n', Elem.sourceline, Tag)
+
         if CurView != 'iconView' and 'SvgFirstGroup' in State and not 'LayerId' in State:
 
-            logging.debug(' SvgCheckForLayerId: drawing element before layerid State %s\n', State)
+            logging.debug(
+                ' SvgCheckForLayerId: drawing element before layerid State %s\n', State)
 
             # Complain about a drawing element before a layerId
 
-            Errors.append('Error 69: File\n\'{0:s}\'\nAt line {1:s}\n\nFound a drawing element before a layerId (or no layerId)\n'.format(str(InFile), str(Elem.sourceline)))
+            Errors.append('Error 69: File\n\'{0:s}\'\nAt line {1:s}\n\nFound a drawing element before a layerId (or no layerId)\n'.format(
+                str(InFile), str(Elem.sourceline)))
 
         # End of if 'SvgFirstGroup' in State and not 'LayerId' in State:
-                
-    # End of if not 'SvgFirstGroup' in State and Tag in ['rect', 'line', 'text', 'polyline', 'polygon', 'path', 'circle', 'ellipse', 'tspan']:
 
-    logging.info (' Exiting SvgCheckForLayerId Level %s\n', Level)
+    # End of if not 'SvgFirstGroup' in State and Tag in ['rect', 'line',
+    # 'text', 'polyline', 'polygon', 'path', 'circle', 'ellipse', 'tspan']:
 
-# End of def SvgCheckForLayerId(Tag, InFile, CurView, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
+    logging.info(' Exiting SvgCheckForLayerId Level %s\n', Level)
+
+# End of def SvgCheckForLayerId(Tag, InFile, CurView, Elem, Errors,
+# Warnings, Info, FzpDict, TagStack, State, Level):
+
 
 def SvgCheckCopperTransform(Id, Transform, State, Level):
 
-    logging.info (' Entering SvgCheckCopperTransform Level %s\n', Level)
+    logging.info(' Entering SvgCheckCopperTransform Level %s\n', Level)
 
     if Transform != None:
 
@@ -4217,17 +4672,19 @@ def SvgCheckCopperTransform(Id, Transform, State, Level):
 
     # End of if Transform != None:
 
-    logging.debug(' SvgCheckCopperTransform: returned %s \'%s\'\n', Id + '_trans', State[Id + '_trans'])
+    logging.debug(' SvgCheckCopperTransform: returned %s \'%s\'\n',
+                  Id + '_trans', State[Id + '_trans'])
 
-    logging.info (' Exiting SvgCheckCopperTransform Level %s\n', Level)
+    logging.info(' Exiting SvgCheckCopperTransform Level %s\n', Level)
 
 # End of def SvgCheckCopperTransform(Id, Transform, State, Level):
 
+
 def SvgPcbLayers(Id, InFile, CurView, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
 
-    logging.info (' Entering SvgPcbLayers Level %s\n', Level)
+    logging.info(' Entering SvgPcbLayers Level %s\n', Level)
 
-    logging.debug (' Entering SvgPcbLayers State %s\n', State)
+    logging.debug(' Entering SvgPcbLayers State %s\n', State)
 
     StackTag, StackLevel = TagStack[len(TagStack) - 1]
 
@@ -4247,11 +4704,13 @@ def SvgPcbLayers(Id, InFile, CurView, Elem, Errors, Warnings, Info, FzpDict, Tag
 
         if 'seensilkscreen' in State:
 
-            # Already seen is an error. 
+            # Already seen is an error.
 
-            Errors.append('Error 70: File\n\'{0:s}\'\nAt line {1:s}\n\nMore than one silkscreen layer\n'.format(str(InFile), str(Elem.sourceline)))
+            Errors.append('Error 70: File\n\'{0:s}\'\nAt line {1:s}\n\nMore than one silkscreen layer\n'.format(
+                str(InFile), str(Elem.sourceline)))
 
-            logging.debug (' SvgPcbLayers: Already seen silkscreen State %s\n', State)
+            logging.debug(
+                ' SvgPcbLayers: Already seen silkscreen State %s\n', State)
 
         else:
 
@@ -4259,25 +4718,28 @@ def SvgPcbLayers(Id, InFile, CurView, Elem, Errors, Warnings, Info, FzpDict, Tag
 
             State['seensilkscreen'] = 'y'
 
-            logging.debug (' SvgPcbLayers: Mark seen silkscreen State %s\n', State)
+            logging.debug(
+                ' SvgPcbLayers: Mark seen silkscreen State %s\n', State)
 
-            # If we have already seen a copper layer issue a warning as that 
-            # makes selection in pcb more difficult. 
+            # If we have already seen a copper layer issue a warning as that
+            # makes selection in pcb more difficult.
 
             if 'seencopper0' in State or 'seencopper1' in State:
 
-                Warnings.append('Warning 25: File\n\'{0:s}\'\nAt line {1:s}\n\nSilkscreen layer should be above the copper layers for easier selection\nin pcb view\n'.format(str(InFile), str(Elem.sourceline)))
+                Warnings.append('Warning 25: File\n\'{0:s}\'\nAt line {1:s}\n\nSilkscreen layer should be above the copper layers for easier selection\nin pcb view\n'.format(
+                    str(InFile), str(Elem.sourceline)))
 
             # End of if 'seencopper0' in State or 'seencopper1' in State:
 
         # End of if 'seensilkscreen' in State:
-            
+
         if len(TagStack) != 2:
 
-            # Not at the top layer is an error. 
+            # Not at the top layer is an error.
 
-            Errors.append('Error 71: File\n\'{0:s}\'\nAt line {1:s}\n\nSilkscreen layer should be at the top, not under group {2:s}\n'.format(str(InFile), str(Elem.sourceline), str(BaseTag)))
-            
+            Errors.append('Error 71: File\n\'{0:s}\'\nAt line {1:s}\n\nSilkscreen layer should be at the top, not under group {2:s}\n'.format(
+                str(InFile), str(Elem.sourceline), str(BaseTag)))
+
         # End of if len(TagStack) != 2:
 
     # End of if Id == 'silkscreen':
@@ -4286,9 +4748,11 @@ def SvgPcbLayers(Id, InFile, CurView, Elem, Errors, Warnings, Info, FzpDict, Tag
 
         if 'seencopper1' in State:
 
-            Errors.append('Error 70: File\n\'{0:s}\'\nAt line {1:s}\n\nMore than one copper1 layer\n'.format(str(InFile), str(Elem.sourceline)))
+            Errors.append('Error 70: File\n\'{0:s}\'\nAt line {1:s}\n\nMore than one copper1 layer\n'.format(
+                str(InFile), str(Elem.sourceline)))
 
-            logging.debug (' SvgPcbLayers: Already seen copper1 State %s\n', State)
+            logging.debug(
+                ' SvgPcbLayers: Already seen copper1 State %s\n', State)
 
         else:
 
@@ -4296,15 +4760,16 @@ def SvgPcbLayers(Id, InFile, CurView, Elem, Errors, Warnings, Info, FzpDict, Tag
 
             State['seencopper1'] = 'y'
 
-            logging.debug (' SvgPcbLayers: Mark seen copper1 State %s\n', State)
+            logging.debug(' SvgPcbLayers: Mark seen copper1 State %s\n', State)
 
         # End of if 'seencopper1' in State:
 
         if len(TagStack) != 2:
 
-            # Not at the top layer is an error but not fatal. 
+            # Not at the top layer is an error but not fatal.
 
-            Warnings.append('Warning 20: File\n\'{0:s}\'\nAt line {1:s}\n\ncopper1 layer should be at the top, not under group {2:s}\n'.format(str(InFile), str(Elem.sourceline), str(BaseTag)))
+            Warnings.append('Warning 20: File\n\'{0:s}\'\nAt line {1:s}\n\ncopper1 layer should be at the top, not under group {2:s}\n'.format(
+                str(InFile), str(Elem.sourceline), str(BaseTag)))
 
         # End of if len(TagStack) != 2:
 
@@ -4314,9 +4779,11 @@ def SvgPcbLayers(Id, InFile, CurView, Elem, Errors, Warnings, Info, FzpDict, Tag
 
         if 'seencopper0' in State:
 
-            Errors.append('Error 70: File\n\'{0:s}\'\nAt line {1:s}\n\nMore than one copper0 layer\n'.format(str(InFile), str(Elem.sourceline)))
+            Errors.append('Error 70: File\n\'{0:s}\'\nAt line {1:s}\n\nMore than one copper0 layer\n'.format(
+                str(InFile), str(Elem.sourceline)))
 
-            logging.debug (' SvgPcbLayers: Already seen copper0 State %s\n', State)
+            logging.debug(
+                ' SvgPcbLayers: Already seen copper0 State %s\n', State)
 
         else:
 
@@ -4324,52 +4791,56 @@ def SvgPcbLayers(Id, InFile, CurView, Elem, Errors, Warnings, Info, FzpDict, Tag
 
             State['seencopper0'] = 'y'
 
-            logging.debug (' SvgPcbLayers: Mark seen copper0 State %s\n', State)
+            logging.debug(' SvgPcbLayers: Mark seen copper0 State %s\n', State)
 
         # End of if 'seencopper0' in State:
 
         if len(TagStack) == 2 and 'seencopper1' in State:
 
-            # Not under copper1 is an error (this is the same level as copper1) 
+            # Not under copper1 is an error (this is the same level as copper1)
 
-            Errors.append('Error 72: File\n\'{0:s}\'\nAt line {1:s}\n\ncopper0 should be under copper1 not the same level\n'.format(str(InFile), str(Elem.sourceline)))
+            Errors.append('Error 72: File\n\'{0:s}\'\nAt line {1:s}\n\ncopper0 should be under copper1 not the same level\n'.format(
+                str(InFile), str(Elem.sourceline)))
 
         elif len(TagStack) > 3:
 
             # too many layers is an error.
 
-            Errors.append('Error 73: File\n\'{0:s}\'\nAt line {1:s}\n\nToo many layers, there should only be copper1 then copper0\n'.format(str(InFile), str(Elem.sourceline)))
+            Errors.append('Error 73: File\n\'{0:s}\'\nAt line {1:s}\n\nToo many layers, there should only be copper1 then copper0\n'.format(
+                str(InFile), str(Elem.sourceline)))
 
         # End of if len(TagStack) == 3 and 'seencopper1' in State:
 
     # End of if Id == 'copper0':
 
-    logging.info (' Exiting SvgPcbLayers Level %s\n', Level)
+    logging.info(' Exiting SvgPcbLayers Level %s\n', Level)
 
-# End of def SvgPcbLayers(Id, InFile, CurView, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
+# End of def SvgPcbLayers(Id, InFile, CurView, Elem, Errors, Warnings,
+# Info, FzpDict, TagStack, State, Level):
+
 
 def SvgCheckPcbLayers(InFile, Errors, Warnings, Info, FzpDict, TagStack, State):
 
-    logging.info (' Entering SvgCheckPcbLayers\n')
+    logging.info(' Entering SvgCheckPcbLayers\n')
 
     # This is only an svg file (we haven't seen the associated fzp)
     # so determine if this is likely SMD and if not output the no
     # hole messages in State and set SMD or Through hole in Info.
 
-    logging.debug (' SvgCheckPcbLayers: No fzp file State %s\n', State)
+    logging.debug(' SvgCheckPcbLayers: No fzp file State %s\n', State)
 
     if 'seencopper0' in State and 'seencopper1' in State:
 
-        # This is a through hole part so note that in Info and 
-        # copy any no radius error messages to Errors. 
+        # This is a through hole part so note that in Info and
+        # copy any no radius error messages to Errors.
 
-        Info.append('File\n\'{0:s}\'\n\nThis is a through hole part as both copper0 and copper1 views are present.\n'.format(str(InFile)))
-
+        Info.append(
+            'File\n\'{0:s}\'\n\nThis is a through hole part as both copper0 and copper1 views are present.\n'.format(str(InFile)))
 
         if State['noradius'] != '':
 
-            # We have seen holes without a radius (which is normal for 
-            # smd parts but an error in through hole) so report them 
+            # We have seen holes without a radius (which is normal for
+            # smd parts but an error in through hole) so report them
             # by moving them from State in to Errors.
 
             for Message in State['noradius']:
@@ -4384,36 +4855,43 @@ def SvgCheckPcbLayers(InFile, Errors, Warnings, Info, FzpDict, TagStack, State):
 
         # This appears to be a normal SMD part so note that in Info.
 
-        Info.append('File\n\'{0:s}\'\n\nThis is a smd part as only the copper1 view is present.\n'.format(str(InFile)))
+        Info.append(
+            'File\n\'{0:s}\'\n\nThis is a smd part as only the copper1 view is present.\n'.format(str(InFile)))
 
     elif 'seencopper0' in State:
 
         # This appears to be a SMD part but on the bottom of the board
         # so note that in Errors.
 
-        Errors.append('Error 75: File\n\'{0:s}\'\n\nThis is a smd part as only the copper0 view is present\nbut it is on the bottom layer, not the top.\n\n'.format(str(InFile)))
+        Errors.append(
+            'Error 75: File\n\'{0:s}\'\n\nThis is a smd part as only the copper0 view is present\nbut it is on the bottom layer, not the top.\n\n'.format(str(InFile)))
 
     elif 'seensilkscreen' in State:
 
         # This appears to be only a silkscreen so note that in Info.
 
-        Info.append('File\n\'{0:s}\'\n\nThis is an only silkscreen part as has no copper layers present.\n'.format(str(InFile)))
+        Info.append(
+            'File\n\'{0:s}\'\n\nThis is an only silkscreen part as has no copper layers present.\n'.format(str(InFile)))
 
     else:
 
-        Warnings.append('Warning 21: File\n\'{0:s}\'\n\nThis appears to be a pcb svg but has no copper or silkscreen layers!\n'.format(str(InFile)))
+        Warnings.append(
+            'Warning 21: File\n\'{0:s}\'\n\nThis appears to be a pcb svg but has no copper or silkscreen layers!\n'.format(str(InFile)))
 
     # End of if 'seencopper0' in State and 'seencopper1' in State:
 
-    logging.info (' Exiting SvgCheckPcbLayers\n')
+    logging.info(' Exiting SvgCheckPcbLayers\n')
 
-# End of def SvgCheckPcbLayers(InFile, Errors, Warnings, Info, FzpDict, TagStack, State):
+# End of def SvgCheckPcbLayers(InFile, Errors, Warnings, Info, FzpDict,
+# TagStack, State):
+
 
 def SvgGroup(InFile, CurView, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
 
-    logging.info (' Entering SvgGroup Level %s\n', Level)
+    logging.info(' Entering SvgGroup Level %s\n', Level)
 
-    logging.debug(' SvgGroup: On entry Errors: %s CurView %s TagStack %s State %s\n', Errors, CurView, TagStack, State)
+    logging.debug(' SvgGroup: On entry Errors: %s CurView %s TagStack %s State %s\n',
+                  Errors, CurView, TagStack, State)
 
     TspanRegex = re.compile(r'^tspan', re.IGNORECASE)
 
@@ -4421,7 +4899,7 @@ def SvgGroup(InFile, CurView, Elem, Errors, Warnings, Info, FzpDict, TagStack, S
 
     # First get the tag to see if we are past the boiler plate and have seen
     # the initial group that starts the actual svg (so we can search for the
-    # layerid before any constructs). 
+    # layerid before any constructs).
 
     Tag = Elem.tag
 
@@ -4429,9 +4907,9 @@ def SvgGroup(InFile, CurView, Elem, Errors, Warnings, Info, FzpDict, TagStack, S
 
     Tag = NameSpaceRegex.sub('', str(Tag))
 
-    Id =  Elem.get('id')
-    
-    logging.debug(' SvgGroup: Entry Id %s TagStack %s\n', Id, TagStack )
+    Id = Elem.get('id')
+
+    logging.debug(' SvgGroup: Entry Id %s TagStack %s\n', Id, TagStack)
 
     if Id != None:
 
@@ -4445,15 +4923,15 @@ def SvgGroup(InFile, CurView, Elem, Errors, Warnings, Info, FzpDict, TagStack, S
 
     if CurView == None:
 
-        # This isn't from an fzp file so we don't have a layerid list to 
-        # compare against. So see if this is likely a layerId (this will 
+        # This isn't from an fzp file so we don't have a layerid list to
+        # compare against. So see if this is likely a layerId (this will
         # sometimes false error when a layerId is nonstandard). In addition
         # keep track of tspan ids to check for nested tspans which fritzing
         # doesn't support. Hopefully they will not occur in areas where the
         # tag stack values are checked (they shouldn't, but you never know)
 
         if Id in ['breadboard', 'icon', 'schematic', 'silkscreen', 'copper0', 'copper1'] or TspanRegex.match(str(Id)):
-    
+
             # Push the Id and Level on to the tag stack.
 
             TagStack.append([Id, Level])
@@ -4465,29 +4943,32 @@ def SvgGroup(InFile, CurView, Elem, Errors, Warnings, Info, FzpDict, TagStack, S
                 if TspanRegex.match(str(State['lastvalue'])):
 
                     # Nested tspan which fritzing doesn't support so issue a
-                    # warning. 
+                    # warning.
 
-                    Warnings.append('Warning 26: File\n\'{0:s}\'\nAt line {1:s}\n\nApparant nested tspan which fritzing doesn\'t support\nIf your text doesn\'t appear in Fritzing this is probably why\n'.format(str(InFile), str(Elem.sourceline)))
+                    Warnings.append('Warning 26: File\n\'{0:s}\'\nAt line {1:s}\n\nApparant nested tspan which fritzing doesn\'t support\nIf your text doesn\'t appear in Fritzing this is probably why\n'.format(
+                        str(InFile), str(Elem.sourceline)))
 
                 # End of if TspanRegex.match(str(State['lastvalue'])):
 
             else:
 
-                # This isn't a tspan element so check it the tag is a group 
-                # and issue a warning if it is not. 
+                # This isn't a tspan element so check it the tag is a group
+                # and issue a warning if it is not.
 
                 if not Tag == 'g':
 
-                    Warnings.append('Warning 27: File\n\'{0:s}\'\nAt line {1:s}\n\nFritzing layerId {2:s} isn\'t a group which it usually should be\n'.format(str(InFile), str(Elem.sourceline), str(Id)))
+                    Warnings.append('Warning 27: File\n\'{0:s}\'\nAt line {1:s}\n\nFritzing layerId {2:s} isn\'t a group which it usually should be\n'.format(
+                        str(InFile), str(Elem.sourceline), str(Id)))
 
                 # End of if not Tag == 'g':
 
-            # End of if re.match(r'^tspan', str(Id)) and re.match(r'^tspan', str(State['lastvalue'])):
-    
+            # End of if re.match(r'^tspan', str(Id)) and re.match(r'^tspan',
+            # str(State['lastvalue'])):
+
             # Set the current layer in to State['lastvalue']
-        
+
             State['lastvalue'] = Id
-    
+
             if Id in ['silkscreen', 'copper0', 'copper1']:
 
                 # Mark that this appears to be a pcb svg in State.
@@ -4496,32 +4977,35 @@ def SvgGroup(InFile, CurView, Elem, Errors, Warnings, Info, FzpDict, TagStack, S
 
                 # Then check that the layers are in the correct order.
 
-                SvgPcbLayers(Id, InFile, CurView, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level)
+                SvgPcbLayers(Id, InFile, CurView, Elem, Errors,
+                             Warnings, Info, FzpDict, TagStack, State, Level)
 
             else:
 
                 logging.debug(' SvgGroup: before test State %s\n', State)
 
-                # If this Id is tspan, it isn't a layerid so don't trip the 
-                # too many layerids warning. 
+                # If this Id is tspan, it isn't a layerid so don't trip the
+                # too many layerids warning.
 
                 if not TspanRegex.match(str(Id)) and 'LayerId' in State:
 
-                    # Single layerId case, but more than one layerId. 
+                    # Single layerId case, but more than one layerId.
 
-                    Warnings.append('Warning 22: File\n\'{0:s}\'\nAt line {1:s}\n\nAlready have a layerId\n'.format(str(InFile), str(Elem.sourceline)))
-    
+                    Warnings.append('Warning 22: File\n\'{0:s}\'\nAt line {1:s}\n\nAlready have a layerId\n'.format(
+                        str(InFile), str(Elem.sourceline)))
+
                     logging.debug(' SvgGroup: Warning dup layer issued\n')
 
                 # End of if 'LayerId' in State:
 
             # End of if Id in ['silkscreen', 'copper0', 'copper1']:
-    
+
             # and note we have seen a LayerId in State for later.
-   
+
             State['LayerId'] = 'y'
 
-        # End of if Id in ['breadboard', 'icon', 'schematic', 'silkscreen', 'copper0', copper1']:
+        # End of if Id in ['breadboard', 'icon', 'schematic', 'silkscreen',
+        # 'copper0', copper1']:
 
     else:
 
@@ -4533,31 +5017,35 @@ def SvgGroup(InFile, CurView, Elem, Errors, Warnings, Info, FzpDict, TagStack, S
             if CurView == 'schematicView' and 'subparts' in FzpDict:
 
                 # We are in a schematic svg that has subparts so check if this
-                # is a subpart id and add it to the tag stack if so. 
+                # is a subpart id and add it to the tag stack if so.
 
-                logging.debug(' SvgGroup: CurView %s subparts %s\n', CurView, FzpDict['subparts'])
+                logging.debug(' SvgGroup: CurView %s subparts %s\n',
+                              CurView, FzpDict['subparts'])
 
                 if Id in FzpDict['subparts']:
 
-                    # Check that schematic is the only thing above this on 
+                    # Check that schematic is the only thing above this on
                     # the tag stack and issue a warning if that isn't true.
 
                     if len(TagStack) != 2:
 
-                        logging.debug(' SvgGroup: TagStack len %s not top level warning issued\n', len(TagStack))
+                        logging.debug(
+                            ' SvgGroup: TagStack len %s not top level warning issued\n', len(TagStack))
 
-                        Errors.append('Error 86: File\n\'{0:s}\'\nAt line {1:s}\n\nSubpart {2:s} isn\'t at the top level when it must be\nFollowing subpart errors may be invalid until this is fixed\n'.format(str(InFile), str(Elem.sourceline), str(Id)))
+                        Errors.append('Error 86: File\n\'{0:s}\'\nAt line {1:s}\n\nSubpart {2:s} isn\'t at the top level when it must be\nFollowing subpart errors may be invalid until this is fixed\n'.format(
+                            str(InFile), str(Elem.sourceline), str(Id)))
 
                     # End of if len(TagStack) != 2:
 
-                    logging.debug(' SvgGroup: subpart %s found and added\n', Id)
-    
+                    logging.debug(
+                        ' SvgGroup: subpart %s found and added\n', Id)
+
                     # Push the Id and Level on to the tag stack.
 
                     TagStack.append([Id, Level])
-    
+
                     # Set the current layer in to State['lastvalue']
-        
+
                     State['lastvalue'] = Id
 
                 # End of if Id in FzpDict['subparts']:
@@ -4566,7 +5054,8 @@ def SvgGroup(InFile, CurView, Elem, Errors, Warnings, Info, FzpDict, TagStack, S
 
             # Only one layerid so check for it.
 
-            logging.debug(' SvgGroup: CurView %s LayerId %s\n', CurView, FzpDict[CurView + '.LayerId'])
+            logging.debug(' SvgGroup: CurView %s LayerId %s\n',
+                          CurView, FzpDict[CurView + '.LayerId'])
 
             if Id == FzpDict[CurView + '.LayerId']:
 
@@ -4576,29 +5065,31 @@ def SvgGroup(InFile, CurView, Elem, Errors, Warnings, Info, FzpDict, TagStack, S
 
                 if 'LayerId' in State:
 
-                    # More than one layerid warning. 
+                    # More than one layerid warning.
 
-                    Warnings.append('Warning 25: File\n\'{0:s}\'\nAt line {1:s}\n\nAlready have a layerId\n'.format(str(InFile), str(Elem.sourceline)))
+                    Warnings.append('Warning 25: File\n\'{0:s}\'\nAt line {1:s}\n\nAlready have a layerId\n'.format(
+                        str(InFile), str(Elem.sourceline)))
 
                 else:
-    
+
                     # and note we have seen a LayerId in State for later.
-       
+
                     State['LayerId'] = 'y'
-    
+
                     # Set the current layer in to State['lastvalue']
-        
+
                     State['lastvalue'] = Id
-        
+
                     logging.debug(' SvgGroup: set State[\'view\'] to %s\n', Id)
 
                 # End of if 'LayerId' in State:
 
-                # Issue a warning if the layerId isn't a group. 
+                # Issue a warning if the layerId isn't a group.
 
                 if not Tag == 'g':
 
-                    Warnings.append('Warning 27: File\n\'{0:s}\'\nAt line {1:s}\n\nFritzing layerId {2:s} isn\'t a group which it usually should be\n'.format(str(InFile), str(Elem.sourceline), str(Id)))
+                    Warnings.append('Warning 27: File\n\'{0:s}\'\nAt line {1:s}\n\nFritzing layerId {2:s} isn\'t a group which it usually should be\n'.format(
+                        str(InFile), str(Elem.sourceline), str(Id)))
 
                 # End of if not Tag == 'g':
 
@@ -4606,53 +5097,56 @@ def SvgGroup(InFile, CurView, Elem, Errors, Warnings, Info, FzpDict, TagStack, S
 
         else:
 
-            # This is pcbView so the LayerIds are a list, and life is more 
+            # This is pcbView so the LayerIds are a list, and life is more
             # complex. For layerids other than copper0 and copper1, they must
-            # be at the top of the tagstack (not under another layerid). If 
-            # both copper0 and copper1 are present the order should be copper1 
+            # be at the top of the tagstack (not under another layerid). If
+            # both copper0 and copper1 are present the order should be copper1
             # copper0 so smd parts are by default on the top layer. So warn
             # about copper1 under copper0 and error for copper0 and copper1 on
-            # the same level. 
+            # the same level.
 
-            logging.debug(' SvgGroup: %s Curview %s LayerIds %s\n', Id, CurView, FzpDict[CurView + '.LayerId'])
-    
+            logging.debug(' SvgGroup: %s Curview %s LayerIds %s\n',
+                          Id, CurView, FzpDict[CurView + '.LayerId'])
+
             if Id in FzpDict[CurView + '.LayerId']:
-    
+
                 # Push the Id and Level on to the tag stack.
 
                 TagStack.append([Id, Level])
-    
+
                 logging.debug(' SvgGroup: pushed %s on to tag stack\n', Id)
-    
+
                 # and note we have seen the LayerId in State for later.
-    
+
                 State['LayerId'] = 'y'
-    
+
                 State[CurView + 'LayerId'] = 'y'
-    
+
                 # Set the current layer in to State['lastvalue']
-    
+
                 State['lastvalue'] = Id
 
-                SvgPcbLayers(Id, InFile, CurView, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level)
-    
+                SvgPcbLayers(Id, InFile, CurView, Elem, Errors,
+                             Warnings, Info, FzpDict, TagStack, State, Level)
+
                 logging.debug(' SvgGroup: set State[\'view\'] to %s\n', Id)
 
-                # Issue a warning if the layerId isn't a group. 
+                # Issue a warning if the layerId isn't a group.
 
                 if not Tag == 'g':
 
-                    Warnings.append('Warning 27: File\n\'{0:s}\'\nAt line {1:s}\n\nFritzing layerId {2:s} isn\'t a group which it usually should be\n'.format(str(InFile), str(Elem.sourceline), str(Id)))
+                    Warnings.append('Warning 27: File\n\'{0:s}\'\nAt line {1:s}\n\nFritzing layerId {2:s} isn\'t a group which it usually should be\n'.format(
+                        str(InFile), str(Elem.sourceline), str(Id)))
 
                 # End of if not Tag == 'g':
-    
+
             # End of if Id in FzpDict[CurView + '.LayerId']:
 
         # End of if CurView == None:
 
         if Id in ['copper0', 'copper1']:
 
-            # If this is copper0 or copper1, check for a transform as a 
+            # If this is copper0 or copper1, check for a transform as a
             # transform in one but not the other is an error.
 
             Transform = Elem.get('transform')
@@ -4663,58 +5157,66 @@ def SvgGroup(InFile, CurView, Elem, Errors, Warnings, Info, FzpDict, TagStack, S
 
         if 'copper0' in TagStack and 'copper1' in TagStack and State['copper0_trans'] != State['copper1_trans']:
 
-            # We have seen both coppers and they doesn't have  
-            # identical transforms so set an error. 
+            # We have seen both coppers and they doesn't have
+            # identical transforms so set an error.
 
-            Errors.append('Error 76: File\n\'{0:s}\'\nAt line {1:s}\n\nCopper0 and copper1 have non identical transforms (no transforms is best)\n'.format(str(InFile), str(Elem.sourceline)))
+            Errors.append('Error 76: File\n\'{0:s}\'\nAt line {1:s}\n\nCopper0 and copper1 have non identical transforms (no transforms is best)\n'.format(
+                str(InFile), str(Elem.sourceline)))
 
             logging.debug(' SvgGroup: set copper transform error\n')
 
-       # End of if 'copper0' in TagStack and 'copper1' in TagStack and State['copper0_trans'] != State['copper1_trans']:
+       # End of if 'copper0' in TagStack and 'copper1' in TagStack and
+       # State['copper0_trans'] != State['copper1_trans']:
 
     # End of if CurView == None:
 
-    logging.debug(' SvgGroup: On exit Errors %s CurView %s TagStack %s len tagstack %s State %s\n', Errors, CurView, TagStack, len(TagStack), State)
+    logging.debug(' SvgGroup: On exit Errors %s CurView %s TagStack %s len tagstack %s State %s\n',
+                  Errors, CurView, TagStack, len(TagStack), State)
 
-    logging.info (' Exiting SvgGroup Level %s\n', Level)
+    logging.info(' Exiting SvgGroup Level %s\n', Level)
 
-# End of def SvgGroup(InFile, CurView, Elem, Errors, Warnings, Info, FzpDict, TagStack, State, Level):
+# End of def SvgGroup(InFile, CurView, Elem, Errors, Warnings, Info,
+# FzpDict, TagStack, State, Level):
+
 
 def SvgInlineStyle(InFile, Elem, Warnings, State):
 
     # If there is a style command in the attributes, convert it to inline
-    # xml (overwriting current values if present). 
-    
-    logging.info (' Entering SvgInlineStyle\n')
+    # xml (overwriting current values if present).
+
+    logging.info(' Entering SvgInlineStyle\n')
 
     # Get the current style values if any
 
     ElemAttributes = Elem.get('style')
 
-    if not ElemAttributes == None: 
+    if not ElemAttributes == None:
 
         # Delete the current style attribute
 
-        logging.debug (' SvgInlineStyle: delete style: %s\n', ElemAttributes)
+        logging.debug(' SvgInlineStyle: delete style: %s\n', ElemAttributes)
 
         Elem.attrib.pop("style", None)
 
-        # Then add the elements back in inline (replacing current values if 
-        # present, as style should overide inline values usually). 
+        # Then add the elements back in inline (replacing current values if
+        # present, as style should overide inline values usually).
 
         Attributes = ElemAttributes.split(';')
 
-        logging.debug (' SvgInlineStyle: attributes %s line %s\n', Attributes, Elem.sourceline)
+        logging.debug(' SvgInlineStyle: attributes %s line %s\n',
+                      Attributes, Elem.sourceline)
 
         for Attribute in Attributes:
 
-            KeyValue = Attribute.split (':')
+            KeyValue = Attribute.split(':')
 
-            logging.debug (' SvgInlineStyle: Attribute %s KeyValue %s\n', Attribute, KeyValue)
+            logging.debug(
+                ' SvgInlineStyle: Attribute %s KeyValue %s\n', Attribute, KeyValue)
 
             # Then set the pair as attribute=value
 
-            logging.debug (' SvgInlineStyle: attribute %s key len %s key[0] %s\n', Attribute, str(len(KeyValue)), KeyValue[0])
+            logging.debug(' SvgInlineStyle: attribute %s key len %s key[0] %s\n', Attribute, str(
+                len(KeyValue)), KeyValue[0])
 
             if len(KeyValue) == 2:
 
@@ -4723,19 +5225,21 @@ def SvgInlineStyle(InFile, Elem, Warnings, State):
                 # if this test isn't made. Probably invalid xml but harmless.
                 # Whitespace (I think only leading whitespace) in the i
                 # attributes also causes this exception so remove any leading
-                # white space (because there is at least one file that not 
+                # white space (because there is at least one file that not
                 # doing so breaks!).
 
-                logging.debug (' SvgInlineStyle: before regex KeyValue\[0\] \'%s\' KeyValue\[1\] \'%s\'\n', KeyValue[0], KeyValue[1])
+                logging.debug(' SvgInlineStyle: before regex KeyValue\[0\] \'%s\' KeyValue\[1\] \'%s\'\n', KeyValue[
+                              0], KeyValue[1])
 
-                KeyValue[0] = re.sub(r'^\s+','', KeyValue[0])
+                KeyValue[0] = re.sub(r'^\s+', '', KeyValue[0])
 
-                KeyValue[1] = re.sub(r'^\s+','', KeyValue[1])
+                KeyValue[1] = re.sub(r'^\s+', '', KeyValue[1])
 
-                logging.debug (' SvgInlineStyle: after regex KeyValue\[0\] \'%s\' KeyValue\[1\] \'%s\'\n', KeyValue[0], KeyValue[1])
+                logging.debug(' SvgInlineStyle: after regex KeyValue\[0\] \'%s\' KeyValue\[1\] \'%s\'\n', KeyValue[
+                              0], KeyValue[1])
 
                 try:
-                
+
                     Elem.set(KeyValue[0], KeyValue[1])
 
                 except ValueError:
@@ -4748,17 +5252,20 @@ def SvgInlineStyle(InFile, Elem, Warnings, State):
 
                     if not KeyValue[0] in State['KeyErrors']:
 
-                        logging.debug (' SvgInlineStyle: KeyValue\[0\] %s State %s\n', KeyValue[0], State)
+                        logging.debug(
+                            ' SvgInlineStyle: KeyValue\[0\] %s State %s\n', KeyValue[0], State)
 
                         # Haven't seen this one yet so log it.
 
-                        Warnings.append('Warning 23: File\n\'{0:s}\'\nAt line {1:s}\n\nKey {2:s}\nvalue {3:s} is invalid and has been deleted\n'.format(str(InFile), str(Elem.sourceline), str(KeyValue[0]),  str(KeyValue[1])))
+                        Warnings.append('Warning 23: File\n\'{0:s}\'\nAt line {1:s}\n\nKey {2:s}\nvalue {3:s} is invalid and has been deleted\n'.format(
+                            str(InFile), str(Elem.sourceline), str(KeyValue[0]),  str(KeyValue[1])))
 
                         # Then add it to State to ignore more of them
 
                         State['KeyErrors'].append(KeyValue[0])
 
-                        logging.debug (' SvgInlineStyle: attribute %s %s is invalid, deleted\n', KeyValue[0], KeyValue[1])
+                        logging.debug(' SvgInlineStyle: attribute %s %s is invalid, deleted\n', KeyValue[
+                                      0], KeyValue[1])
 
                     # End of if not KeyValue[0] in State['KeyErrors']:
 
@@ -4768,11 +5275,12 @@ def SvgInlineStyle(InFile, Elem, Warnings, State):
 
         # End of for Attribute in Attributes:
 
-    # end of if not ElemAttributes == None: 
+    # end of if not ElemAttributes == None:
 
-    logging.info (' Exiting SvgInlineStyle\n')
+    logging.info(' Exiting SvgInlineStyle\n')
 
 # End of def SvgInlineStyle(InFile, Elem, Warnings, State):
+
 
 def SvgRemoveInheritableAttribs(InFile, Elem, Errors, Warnings, Info, State, InheritedAttributes, Level):
 
@@ -4786,17 +5294,20 @@ def SvgRemoveInheritableAttribs(InFile, Elem, Errors, Warnings, Info, State, Inh
     # the leaf nodes of all elements of copper0 or copper1 which should fix
     # the problem and allow us to use optimised svg in Inkscape.
 
-    logging.info (' Entering SvgRemoveInheritableAttribs Level %s State[\'lastvalue\'] %s\n', Level, State['lastvalue'])
+    logging.info(
+        ' Entering SvgRemoveInheritableAttribs Level %s State[\'lastvalue\'] %s\n', Level, State['lastvalue'])
 
     if not (State['lastvalue'] == 'copper0' or State['lastvalue'] == 'copper1'):
 
-        # Not in a pcb copper layer so don't do anything. 
+        # Not in a pcb copper layer so don't do anything.
 
-        logging.debug(' Exiting SvgRemoveInheritableAttribs unchanged not pcb group\n')
+        logging.debug(
+            ' Exiting SvgRemoveInheritableAttribs unchanged not pcb group\n')
 
         return
 
-    # End of if not (State['lastvalue'] == 'copper0' or State['lastvalue'] == 'copper1'):
+    # End of if not (State['lastvalue'] == 'copper0' or State['lastvalue'] ==
+    # 'copper1'):
 
     # First Convert any style command to inline xml
 
@@ -4808,35 +5319,40 @@ def SvgRemoveInheritableAttribs(InFile, Elem, Errors, Warnings, Info, State, Inh
 
     if StrokeWidth != None:
 
-        # Overwrite any previous value with the current value. 
+        # Overwrite any previous value with the current value.
 
         InheritedAttributes = 'stroke-width:' + StrokeWidth
 
     # End of if StrokeWidth != None:
 
-    logging.debug(' Exiting SvgRemoveInheritableAttribs set InheritedAttributes to %s\n', StrokeWidth)
+    logging.debug(
+        ' Exiting SvgRemoveInheritableAttribs set InheritedAttributes to %s\n', StrokeWidth)
 
-    logging.info (' Exiting SvgRemoveInheritableAttribs Level %s\n', Level)
+    logging.info(' Exiting SvgRemoveInheritableAttribs Level %s\n', Level)
 
-# End of def SvgRemoveInheritableAttribs(InFile, Elem, Errors, Warnings, Info, State, InheritedAttributes, Level):
+# End of def SvgRemoveInheritableAttribs(InFile, Elem, Errors, Warnings,
+# Info, State, InheritedAttributes, Level):
+
 
 def SvgSvgSetInheritedAttributes(InFile, Elem, InheritedAttributes):
 
     # Some part of Fritzing (probably the script to produce the gerber output)
     # can't deal with inheritance. The case that drove this change (and the
     # only translation currently being done) is to save the svg in Inkscape
-    # as optimized svg (rather than plain) at which point the stroke-width 
+    # as optimized svg (rather than plain) at which point the stroke-width
     # attribute is optimized in to copper0 or copper1 top level and inherited.
     # The output geber missing the stroke-width parameter outputs an oversize
-    # nonplated through hole. To fix that we copy the stroke length in to 
+    # nonplated through hole. To fix that we copy the stroke length in to
     # the leaf nodes of all elements of copper0 or copper1 which should fix
     # the problem and allow us to use optimised svg in Inkscape.
 
-    logging.info (' Entering SvgSetInheritedAttributes\n')
+    logging.info(' Entering SvgSetInheritedAttributes\n')
 
-    Info.append('Modified 5: File\n\'{0:s}\'\nAt line {1:s}\n\nConverted style to inline xml\n'.format(str(InFile), str(Elem.sourceline)))
+    Info.append('Modified 5: File\n\'{0:s}\'\nAt line {1:s}\n\nConverted style to inline xml\n'.format(
+        str(InFile), str(Elem.sourceline)))
 
-    logging.debug ('SvgSetInheritedAttributes: Elem attributes on entry %s InheritedAttributes %s\n', Elem.attrib, InheritedAttributes)
+    logging.debug('SvgSetInheritedAttributes: Elem attributes on entry %s InheritedAttributes %s\n',
+                  Elem.attrib, InheritedAttributes)
 
     attributes = InheritedAttributes.split(';')
 
@@ -4846,16 +5362,17 @@ def SvgSvgSetInheritedAttributes(InFile, Elem, InheritedAttributes):
 
         if not Elem.get(KeyValue[0]):
 
-            # if the key doesn't currently exist then add it and its 
-            # associated value. 
+            # if the key doesn't currently exist then add it and its
+            # associated value.
 
-            logging.debug (' SvgSetInheritedAttributes: Set new element key %s to inherited attribute value: %s\n', KeyValue[0], KeyValue[1])
+            logging.debug(' SvgSetInheritedAttributes: Set new element key %s to inherited attribute value: %s\n', KeyValue[
+                          0], KeyValue[1])
 
             Elem.set(KeyValue[0], KeyValue[1])
 
-    logging.debug (' SvgSetInheritedAttributes: At end Elem attributes %s\n', Elem.attrib)
+    logging.debug(
+        ' SvgSetInheritedAttributes: At end Elem attributes %s\n', Elem.attrib)
 
-    logging.info (' Exiting SvgSetInheritedAttributes\n')
+    logging.info(' Exiting SvgSetInheritedAttributes\n')
 
 # End of def SvgSetInheritedAttributes(InFile, Elem, InheritedAttributes):
-

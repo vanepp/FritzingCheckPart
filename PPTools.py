@@ -7,7 +7,7 @@
 # printing is causeing problems, set this to 'n' to disable detail pretty 
 # printing (and if that fixes it, please report the bug).
 
-DetailPP = 'Y'
+DetailPP = 'n'
 
 Version = '0.0.2'  # Version number of this file.
 
