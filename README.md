@@ -51,6 +51,10 @@ to `/usr/local/bin`
 
 Tested on Ubuntu 16.04 LTS and Ubuntu 18.04 LTS
 
+### user install
+pip install --user lxml
+
+### root install
 copy the py scripts to /usr/local/bin via sudo:
 
 ```
@@ -264,7 +268,7 @@ the height/width to something other than 0 and correct the x/y positioning.
 exported part so as to not change core which will break parts update, but the 
 same file as above) there is a different message in a different place:
 
-Modified 2: File
+### Modified 2: File
 'svg.schematic.prefix0000_fa1ebd566edf2f3d943a0046711f2d3c_1_schematic.svg'
 At line 23
 
@@ -472,13 +476,13 @@ Bean_revE.fzp file currently in core:
 
 line 161 from Bean_revE.fzp
 
-<p layer='schematic' hybrid='yes' svgId='connector81pin' terminalId='connector81terminal'hybrid='yes' /></schematicView>
+	<p layer='schematic' hybrid='yes' svgId='connector81pin' terminalId='connector81terminal'hybrid='yes' /></schematicView>
 
 there are two errors in this line. There is a missing space between 
 connector81terminal' and hybrid='yes' and the second hybrid='yes is 
 wrong. The line should be corrected to this:
 
-<p layer='schematic' hybrid='yes' svgId='connector81pin' terminalId='connector81terminal' /></schematicView>
+	<p layer='schematic' hybrid='yes' svgId='connector81pin' terminalId='connector81terminal' /></schematicView>
 
 which is correct xml and the complaints from parser will stop. You 
 will get a lot more errors, but again they are really there, even 
@@ -1631,7 +1635,9 @@ sometimes iconView is copied from breadboard (which would trip this
 warning) and because we don't actually check anything in icon view
 icon view processing from the fzp is skipped. 
 
-Modified 1: File
+## Modification messages
+
+### Modified 1: File
 'filename.fzp'
 At line 20
 
@@ -1640,7 +1646,7 @@ Removed px from font-size leaving 3.5
 Removed the px from font-size="3.5x" because Fritzing objects to the px
 on the font-size and sets the font-size to 0 when the part is edited.
 
-Modified 2: File
+### Modified 2: File
 'filename.fzp'
 At line 20
 
@@ -1653,7 +1659,7 @@ if necessary) the location of this terminal in the svg. You may also
 need to adjust the size of the terminal to be 10 thou as the size of
 10 may not be correct depending on scaling and translates. 
 
-Modified 3: File
+### Modified 3: File
 'filename.fzp'
 At line 20
 
@@ -1662,7 +1668,7 @@ Silkscreen, converted stoke/fill from white or not black to black
 Notification that we have changed the color of the silkscreen layer 
 in the svg from white (or not black) to black for both stroke and fill. 
 
-Modified 4: File
+### Modified 4: File
 'filename.fzp'
 At line 20
 
@@ -1680,7 +1686,7 @@ Notification that the reference file was updated to be the same as the
 file name of this svg file. Nothing much appears to care whether this
 field is correct or not.
 
-Modified 5: File
+### Modified 5: File
 'filename.fzp'
 At line 20
 
