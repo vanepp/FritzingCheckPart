@@ -3703,7 +3703,8 @@ def ProcessSvgLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Erro
                 # and log an error to warn the user we made a change that will 
                 # affect the svg terminal position so they check it. 
 
-                Error.append('Modified 2: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector {2:s} had a zero height, set to 10\nCheck the alignment of this pin in the svg!\n'.format(str(InFile), str(Elem.sourceline), str(Id)))
+                Errors.append('Modified 2: File\n\'{0:s}\'\nAt line {1:s}\n\nConnector {2:s} had a zero height, set to 10\nCheck the alignment of this pin in the svg!\n'.format(
+                    str(InFile), str(Elem.sourceline), str(Id)))
 
             else :
 
