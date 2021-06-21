@@ -1681,11 +1681,12 @@ def ProcessFzpLeafNode(FzpType, FileType, InFile, CurView, PrefixDir, Elem, Erro
 
     logging.info(' Exiting ProcessFzpLeafNode Level %s\n', Level)
 
+def stripPartName(name):
+    return name.translate({ord(i): None for i in '-_ .'})
+
 # End of def ProcessFzpLeafNode(FzpType, FileType, InFile, CurView,
 # PrefixDir, Elem, Errors, Warnings, Info, FzpDict, TagStack, State,
 # Level):
-
-
 def FzpTags(InFile, Elem, Errors, Warnings, Info, FzpDict, TagStack, Level):
 
     # Looks for and log any of the Fritzing tags. We will check the dictionary
@@ -1835,12 +1836,20 @@ def FzpmoduleId(FzpType, InFile, Elem, Errors, Warnings, Info, FzpDict, State, L
 
         logging.debug(' FzpmoduleId: removed .fzp to leave %s\n', File)
 
-        if File != ModuleId:
 
-            Warnings.append('Warning 3: File\n\'{0:s}\'\nAt line {1:s}\n\nModuleId \'{2:s}\'\n\nDoesn\'t match filename\n\n\'{3:s}\'\n'.format(
+        if not stripPartName(ModuleId).startswith(
+                stripPartName(File)):
+
+            Warnings.append(
+                "Warning 3: File\n"
+                "'{0:s}'\n"
+                "At line {1:s}\n\n"
+                "ModuleId '{2:s}'\n\n"
+                "is not similar to filename\n\n"
+                "'{3:s}'\n".format(
                 str(InFile), str(Elem.sourceline), str(ModuleId), str(File)))
 
-        # End of if File != ModuleId:
+
 
         if 'moduleId' in FzpDict:
 
