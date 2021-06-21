@@ -49,30 +49,16 @@ to `/usr/local/bin`
 
 ### Linux
 
-Tested on Ubuntu 16.04 LTS and Ubuntu 18.04 LTS
+Tested on Ubuntu 18.04 LTS
+Python3 is required
 
-### user install
+```
+git clone git@github.com:vanepp/FritzingCheckPart.git
+#alternative
+# git clone git@github.com:KjellMorgenstern/FritzingCheckPart.git
 pip install --user lxml
-
-### root install
-copy the py scripts to /usr/local/bin via sudo:
-
-```
-sudo cp FritzingCheckPart.py /usr/local/bin 
-sudo cp FritzingTools.py /usr/local/bin 
-sudo cp PP.py /usr/local/bin 
-sudo cp PPTools.py /usr/local/bin 
-
-chmod ugo+x /usr/local/bin/*.py
 ```
 
-TODO: It usually is advisable to install and run python scripts in user mode,
-root access should not be needed.
-
-The Ubuntu install appears to have lxml and python 3 already installed 
-
-Note the script has problems with unicode under python 2.7 and probably won't
-run there without modification (which I don't know how to make). 
 
 ## Testing
 
