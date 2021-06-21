@@ -9,33 +9,32 @@
 # change, but I use modify as it is much easier converting 0 width parts with
 # Inkscape like that.
 
+
+import PPTools as PP
+import logging
+import re
+import sys
+import os
+
 ModifyTerminal = 'y'
 
 # Set to 'n' (or anything not 'y') to supress Warning 28: (dup id in
 # description field) which is all of common, annoying and harmless.
 # However by default the warning is issued ...
 
-IssueNameDupWarning = 'y'
+IssueNameDupWarning = 'n'
 
-Version = '0.0.2'  # Version number of this file.
+Version = '0.0.3'  # Version number of this file.
 
 # Import copyfile
-
 from shutil import copyfile
 
 # Import os and sys to get file rename and the argv stuff, re for regex,
 # logging to get logging support and PPTools for the parse routine
 
-import os
-import sys
-import re
-import logging
-import PPTools as PP
 
 # and the lxml library for the xml
-
 from lxml import etree
-
 
 def InitializeAll():
 

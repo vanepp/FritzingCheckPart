@@ -21,11 +21,13 @@
 # debugging.
 
 import logging
+import os
 import re
 import sys
-import PPTools as PP
+
 import FritzingTools as Fritzing
-import os
+import PPTools as PP
+
 Debug = 0
 
 Version = '0.0.3'  # Version number of this file.
@@ -80,13 +82,13 @@ PrefixDir = None
 FileType, DirProcessing, PrefixDir, Path, File, SrcDir, DstDir = Fritzing.ProcessArgs(
     sys.argv, Errors)
 
-logging.debug(' FritzingCheckPart.py FileType %s, DirProcessing %s  PrefixDir %s,  Path %s, File %s, SrcDir %s, DstDir %s\n',
-              FileType, DirProcessing, PrefixDir, Path, File, SrcDir, DstDir)
+logging.debug(
+    ' FritzingCheckPart.py FileType %s, DirProcessing %s  PrefixDir %s,  Path %s, File %s, SrcDir %s, DstDir %s\n',
+    FileType, DirProcessing, PrefixDir, Path, File, SrcDir, DstDir)
 
 # If the returned FileType is None then go print the errors then exit.
 
 if FileType == None:
-
     PP.PrintErrors(Errors)
 
     sys.exit(1)
@@ -187,7 +189,8 @@ if DirProcessing == 'Y':
                 # require filename translation).
 
                 Doc = Fritzing.ProcessSvg(FzpType, 'SVG', FQInFile, FQOutFile, CurView, PrefixDir, Errors,
-                                          Warnings, Info, FzpDict, FilesProcessed, TagStack, State, InheritedAttributes, Debug)
+                                          Warnings, Info, FzpDict, FilesProcessed, TagStack, State, InheritedAttributes,
+                                          Debug)
 
             elif PartRegex.search(BaseFile):
 
@@ -197,7 +200,8 @@ if DirProcessing == 'Y':
                 # require filename translation) and FileType to 'fzpPart'.
 
                 Doc = Fritzing.ProcessFzp(DirProcessing, FzpType, 'FZPPART', FQInFile, FQOutFile, CurView, PrefixDir,
-                                          Errors, Warnings, Info, FzpDict, FilesProcessed, TagStack, State, InheritedAttributes, Debug)
+                                          Errors, Warnings, Info, FzpDict, FilesProcessed, TagStack, State,
+                                          InheritedAttributes, Debug)
 
             elif FzpExtRegex.search(BaseFile):
 
@@ -213,7 +217,8 @@ if DirProcessing == 'Y':
                 FQOutFile = os.path.join(FQOutFile, InFile)
 
                 Doc = Fritzing.ProcessFzp(DirProcessing, FzpType, 'FZPFRITZ', FQInFile, FQOutFile, CurView, PrefixDir,
-                                          Errors, Warnings, Info, FzpDict, FilesProcessed, TagStack, State, InheritedAttributes, Debug)
+                                          Errors, Warnings, Info, FzpDict, FilesProcessed, TagStack, State,
+                                          InheritedAttributes, Debug)
 
             else:
 
@@ -221,12 +226,12 @@ if DirProcessing == 'Y':
                 # ignore it.
 
                 Warnings.append(
-                    'Warning 1: File\n\n\'{0:s}\'\n\nIsn\'t a Fritzing file and has been ignored in processing the directory\n'.format(str(InFile)))
+                    'Warning 1: File\n\n\'{0:s}\'\n\nIsn\'t a Fritzing file and has been ignored in processing the directory\n'.format(
+                        str(InFile)))
 
             # End of if SvgExtRegex.search(InFile):
 
             if len(Errors) != 0:
-
                 # If we have seen errors in this file, note that to set the
                 # eventual return code when all processing is done.
 
@@ -303,8 +308,9 @@ elif FileType == 'FZPPART':
 
     # set the FzpType to 'fzpPart' by reusing FileType in this call
 
-    Doc = Fritzing.ProcessFzp(DirProcessing, FileType, FileType,  InFile, None, CurView, PrefixDir,
-                              Errors, Warnings, Info, FzpDict, FilesProcessed, TagStack, State, InheritedAttributes, Debug)
+    Doc = Fritzing.ProcessFzp(DirProcessing, FileType, FileType, InFile, None, CurView, PrefixDir,
+                              Errors, Warnings, Info, FzpDict, FilesProcessed, TagStack, State, InheritedAttributes,
+                              Debug)
 
     # Output the Info, Warnings and Errors associated with the document
 
@@ -332,7 +338,8 @@ elif FileType == 'FZPFRITZ':
     # Use FileType as the FzpType in this call
 
     Doc = Fritzing.ProcessFzp(DirProcessing, FileType, FileType, InFile, None, CurView, PrefixDir,
-                              Errors, Warnings, Info, FzpDict, FilesProcessed, TagStack, State, InheritedAttributes, Debug)
+                              Errors, Warnings, Info, FzpDict, FilesProcessed, TagStack, State, InheritedAttributes,
+                              Debug)
 
     # Output the errors and warnings associated with the document
 
@@ -350,7 +357,6 @@ else:
 # End of if FileType == 'dir':
 
 if len(Errors) != 0:
-
     # if there were errors set the flag so we exit non 0
 
     ErrorsSeen = 'y'
